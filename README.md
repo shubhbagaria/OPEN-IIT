@@ -50,13 +50,39 @@ function makes that impossible, and there's a test asserting it.
 ## 3. Three tables, not one
 
 The feature store is three separate files. The split is about **time** — specifically, when
-each piece of information becomes known.
+each piece of information becomes known. All three answer the same question ("will this
+promise be kept?"), but at different moments, and a model may only learn from information
+that will actually exist at the moment it is used.
+
+Take one call:
+
+```
+10:00  Bot: "Rs 4,200 is overdue. By which date can you pay?"
+10:01  Borrower: "Next week… I have to go."           ← in-call
+10:02  Call ends                                       ← end-call
+Day 2  Borrower opens the payment link                ← post-call
+Day 5  Promised date
+```
 
 | Table | One row per | Contains | Who uses it |
 |---|---|---|---|
+| `features_incall` | promise × borrower turn | only what has been said *so far* in the call | the live mid-call model, which warns the agent before the borrower hangs up; Phase 4 serves this |
 | `features_endcall` | promise | everything knowable by the moment the call ends | Team C's main training table |
-| `features_incall` | promise × borrower turn | everything knowable at that point *mid-call* | the live mid-call model; Phase 4 serves this |
-| `features_postcall` | promise | signals arriving *after* the call | parking-window model only |
+| `features_postcall` | promise | signals arriving *after* the call, up to the promised date | parking-window / follow-up model only |
+
+### Why the in-call table has one row per turn
+
+A live model has to work at **every point** in the call, not just the end. So each time the
+borrower speaks, a new row is built from the turns up to that point only:
+
+```
+after turn 1  → features from turn 1 only
+after turn 3  → features from turns 1–3
+after turn 5  → features from turns 1–5
+```
+
+That is why it has about five rows per call (15,616 rows for 3,067 calls). The end-call row is
+simply the last of these snapshots, made by the same function (see §2).
 
 ### Why the third table is quarantined
 
@@ -75,27 +101,101 @@ own file. `pipeline.py` checks on every run that no `post_` column has appeared 
 two tables and crashes if one has. You cannot leak them by forgetting, only by deliberately
 rewriting the guard.
 
+### And `labels`?
+
+`labels.csv` is not a feature table. It is the answer key (kept or broken), so it must never
+be given to a model as an input. The pipeline only uses it to work out each agent's past keep
+rate from outcomes already known before the call, and it crashes if `kept` ever appears in a
+feature table.
+
 ---
 
 ## 4. What's in the box
 
+### The pipeline, step by step
+
+`python run.py` does this, in order:
+
+1. **Read** every CSV in `csv_folder/` and stop if a required file or column is missing.
+2. **Label** each promise as kept or broken. Phase 1's `phase1_labels.csv` is used if present;
+   otherwise kept means at least 80% of the amount was paid by the borrower by the end of
+   promised date + 3 days.
+3. **Conversation features.** For each call: order the turns, clean the text, find phrases
+   (`lexicons.py`) and dates/amounts (`extractors.py`), then compute features from turns
+   0..k (`features.py`). This gives one row per borrower turn (in-call) and one per call
+   (end-call). Field visits get a row with `has_transcript = 0`.
+4. **Account features.** Join what was known about the account at the time: overdue amount,
+   salary day, past promises.
+5. **Agent features.** The agent's track record, using only outcomes already known before
+   the call and only train-split accounts.
+6. **Post-call features**, in their own table, counting events only up to the promised date.
+7. **Safety checks.** Crash if a post-call, label or annotation column reached a feature
+   table. Then save everything to `out/`.
+8. **Reports.** `audit.py` writes coverage, leakage, feature dictionary and annotation
+   reports.
+
 ```
-ptp_features/
-    config.py        every tunable number, in one place
-    lexicons.py      the multilingual phrase dictionaries
-    extractors.py    finding dates and money amounts in speech
-    features.py      THE prefix function — the heart of it
-    context.py       account and agent features
-    pipeline.py      joins everything, writes the three tables
-    audit.py         coverage, leakage audit, feature dictionary, annotation check
-run.py               the command you actually run
-tests.py             32 tests
-verify_real_samples.py  19 checks against real transcript rows
-make_synthetic.py    fake data matching your schemas, for testing
-requirements.txt     pandas, numpy, pyarrow
-csv_folder/          the real input CSVs (nine required + annotated_ptp_sample.csv)
-out/                 the generated feature store and reports
+csv_folder/ ─► read ─► labels ─┬─► conversation ─┐
+                               ├─► account ──────┼─► endcall + incall ─┐
+                               ├─► agent ────────┘                     ├─► checks ─► out/ ─► reports
+                               └─► post-call ──────────────────────────┘
 ```
+
+### Main folder
+
+| File | What it does |
+|---|---|
+| `run.py` | **The file you run.** Reads the data, builds the tables, writes the reports. |
+| `tests.py` | 32 automatic checks: no future data leaking in, amounts read correctly, and so on. |
+| `verify_real_samples.py` | 19 expected results on two real calls. |
+| `make_synthetic.py` | Fake data in the real format, for testing. Its numbers mean nothing. |
+| `requirements.txt` | Libraries needed: pandas, numpy, pyarrow. |
+| `README.md` | This file: what the project does, the design decisions, and how to run it. |
+| `.gitignore` | Files Git should not upload (Python caches and similar). |
+
+### The engine: `ptp_features/`
+
+| File | What it does |
+|---|---|
+| `config.py` | Every setting in one place: folders, payment channels that count, grace days, minimum agent history. |
+| `lexicons.py` | Phrase lists in English, Hindi and Kannada grouped by meaning (hedge, hardship, refusal…). Cleans text and counts hits per group. |
+| `extractors.py` | Finds money amounts and dates (exact or vague). Spots the bot asking "by which date?" or pushing for a minimum payment. |
+| `features.py` | **The heart.** Turns those hits into about 125 conversation features, using turns 0..k only. |
+| `context.py` | Account features (overdue, salary timing, promise vs ability to pay) and agent features (past keep rate, promises per call, late-evening bunching, copy-pasted remarks). |
+| `pipeline.py` | **The conductor.** Loads data, builds labels, calls everything in order, joins the tables, runs the safety checks, saves. |
+| `audit.py` | Writes the four reports. |
+
+### Input: `csv_folder/`
+
+| File | Contains |
+|---|---|
+| `ptps.csv` | **One row per promise:** who, how much, by when, call or field visit. Everything is built around it. |
+| `call_transcripts.csv` | Each call turn by turn, with timings and speech-to-text confidence. |
+| `accounts.csv` | Per account: overdue, EMI, salary day, past promises, credit band. |
+| `agents.csv` | Per agent or bot: channel, language team, experience. |
+| `dial_attempts.csv` | Every call attempt and agent remark. Used for agent features. |
+| `payments.csv` | Every payment and channel. Used for the labels. |
+| `post_call_events.csv` | Link sent/opened, WhatsApp replies, callbacks. |
+| `splits.csv` | Train / validation / test, per account. |
+| `lenders.csv` | Lender type. |
+| `annotated_ptp_sample.csv` | *(Optional)* 200 promises labelled by type. Used only to check features, never as one. |
+
+### Output: `out/`
+
+Rebuilt on every run.
+
+| File | Contains |
+|---|---|
+| `features_endcall` | One row per promise, everything known at hangup. Team C's main training table. |
+| `features_incall` | One row per borrower turn, only what was known at that moment. For the live model. |
+| `features_postcall` | Post-call signals up to the promised date. Follow-up model only. |
+| `labels` | Kept or broken, plus `label_source`. The answer key, never a model input. |
+| `coverage_report` | How much data was covered, phrase coverage per language, emptiest features. |
+| `leakage_audit.md` | Checks that nothing from the future or the test set leaked in. |
+| `feature_dictionary` | Every column: meaning, when available, blank rate, caveats. |
+| `annotation_check` | Features compared with the human labels (train + validation only). |
+
+Tables are written as `.csv` and `.parquet`, reports as `.md` (some also `.json`).
 
 ### Running it
 
@@ -107,8 +207,7 @@ python verify_real_samples.py      # 19 checks on two real calls
 ```
 
 `--data-dir` and `--out-dir` override the folders. Takes about ten seconds. Writes the
-three tables plus the label table (CSV and Parquet), and four reports. The four reports are
-also copied to the project root, next to this file.
+three tables plus the label table (CSV and Parquet), and four reports, all into `out/`.
 
 `annotated_ptp_sample.csv` is optional. When it is present, the run also writes
 `annotation_check.md` (see §7). It is a human label, so it is only ever used to *check*
@@ -483,7 +582,7 @@ Two notes to pass on with it:
 
 ## 10. Next steps
 
-1. ~~Run it on the real CSVs.~~ Done: outputs are in `out/` and the reports are at the root.
+1. ~~Run it on the real CSVs.~~ Done: outputs and reports are in `out/`.
 2. **Close the lexicon gap.** 54% of borrower turns trigger no cue. Run
    `mine_candidate_terms` on the train split, starting with Hinglish (56% uncovered), and
    have a collections SME review the candidates.
