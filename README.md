@@ -148,6 +148,7 @@ csv_folder/ ─► read ─► labels ─┬─► conversation ─┐
 | `run.py` | **The file you run.** Reads the data, builds the tables, writes the reports. |
 | `requirements.txt` | Libraries needed: pandas, numpy, pyarrow. |
 | `README.md` | This file: what the project does, the design decisions, and how to run it. |
+| `FEATURE_REFERENCE.md` | Every column of every output CSV, explained in tables. |
 | `.gitignore` | Files Git should not upload (Python caches and similar). |
 | `tests.py` | *Checking tool.* 32 checks that the pipeline is not silently wrong: "23 days" is not read as ₹23, a payment never keeps two promises, nothing from the future or the test split leaks in, one row per promise. Some use small made-up examples; the rest run the whole pipeline and inspect the real output. |
 | `verify_real_samples.py` | *Checking tool.* Runs two real calls through the feature code and checks 19 things a person reading them would notice, e.g. "borrower mentioned hardship", "borrower named no amount". |
