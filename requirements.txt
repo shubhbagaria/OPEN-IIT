@@ -1,0 +1,7 @@
+# Phase 2 feature engine -- Python 3.9+
+# Verified with Python 3.11.9, pandas 3.0.6, numpy 2.4.6, pyarrow 25.0.1.
+pandas>=2.0
+numpy>=1.24
+# Parquet output. Without it, pipeline._write silently skips the .parquet files
+# and writes CSV only.
+pyarrow>=14.0

@@ -1,0 +1,206 @@
+{
+  "n_annotated": 200,
+  "n_unmatched_ptp_ids": 0,
+  "n_by_split": {
+    "train": 139,
+    "validation": 34,
+    "test": 27
+  },
+  "label_source": "team_b_fallback",
+  "n_used": 173,
+  "n_by_confidence": {
+    "high": 96,
+    "medium": 64,
+    "low": 13
+  },
+  "kept_rate_by_type": {
+    "agent_recorded_or_pushed": {
+      "kept_rate": 0.0,
+      "n": 12
+    },
+    "escape": {
+      "kept_rate": 0.0645,
+      "n": 31
+    },
+    "genuine_feasible": {
+      "kept_rate": 0.5532,
+      "n": 47
+    },
+    "genuine_infeasible": {
+      "kept_rate": 0.1395,
+      "n": 43
+    },
+    "repeat_promiser": {
+      "kept_rate": 0.0,
+      "n": 24
+    },
+    "third_party": {
+      "kept_rate": 0.25,
+      "n": 16
+    }
+  },
+  "feature_means_by_type": {
+    "has_transcript": {
+      "agent_recorded_or_pushed": 1.0,
+      "escape": 1.0,
+      "genuine_feasible": 1.0,
+      "genuine_infeasible": 1.0,
+      "repeat_promiser": 1.0,
+      "third_party": 1.0
+    },
+    "cust_stated_neither_date_nor_amount": {
+      "agent_recorded_or_pushed": 0.583,
+      "escape": 0.387,
+      "genuine_feasible": 0.106,
+      "genuine_infeasible": 0.07,
+      "repeat_promiser": 0.417,
+      "third_party": 0.312
+    },
+    "cust_stated_concrete_date": {
+      "agent_recorded_or_pushed": 0.0,
+      "escape": 0.129,
+      "genuine_feasible": 0.511,
+      "genuine_infeasible": 0.698,
+      "repeat_promiser": 0.25,
+      "third_party": 0.125
+    },
+    "cust_stated_vague_date_only": {
+      "agent_recorded_or_pushed": 0.417,
+      "escape": 0.484,
+      "genuine_feasible": 0.191,
+      "genuine_infeasible": 0.07,
+      "repeat_promiser": 0.333,
+      "third_party": 0.562
+    },
+    "lex_hedge_any": {
+      "agent_recorded_or_pushed": 0.583,
+      "escape": 0.452,
+      "genuine_feasible": 0.213,
+      "genuine_infeasible": 0.465,
+      "repeat_promiser": 0.542,
+      "third_party": 0.0
+    },
+    "lex_conditional_any": {
+      "agent_recorded_or_pushed": 0.0,
+      "escape": 0.226,
+      "genuine_feasible": 0.128,
+      "genuine_infeasible": 0.419,
+      "repeat_promiser": 0.083,
+      "third_party": 0.0
+    },
+    "lex_hardship_any": {
+      "agent_recorded_or_pushed": 0.25,
+      "escape": 0.097,
+      "genuine_feasible": 0.064,
+      "genuine_infeasible": 0.302,
+      "repeat_promiser": 0.083,
+      "third_party": 0.0
+    },
+    "lex_third_party_any": {
+      "agent_recorded_or_pushed": 0.167,
+      "escape": 0.0,
+      "genuine_feasible": 0.0,
+      "genuine_infeasible": 0.0,
+      "repeat_promiser": 0.0,
+      "third_party": 0.438
+    },
+    "lex_termination_any": {
+      "agent_recorded_or_pushed": 0.75,
+      "escape": 0.742,
+      "genuine_feasible": 0.596,
+      "genuine_infeasible": 0.326,
+      "repeat_promiser": 0.5,
+      "third_party": 0.0
+    },
+    "lex_link_refusal_any": {
+      "agent_recorded_or_pushed": 0.0,
+      "escape": 0.194,
+      "genuine_feasible": 0.298,
+      "genuine_infeasible": 0.163,
+      "repeat_promiser": 0.125,
+      "third_party": 0.0
+    },
+    "safety_signal_any": {
+      "agent_recorded_or_pushed": 0.417,
+      "escape": 0.129,
+      "genuine_feasible": 0.298,
+      "genuine_infeasible": 0.512,
+      "repeat_promiser": 0.125,
+      "third_party": 0.0
+    },
+    "acct_answerer_is_self": {
+      "agent_recorded_or_pushed": 1.0,
+      "escape": 1.0,
+      "genuine_feasible": 1.0,
+      "genuine_infeasible": 1.0,
+      "repeat_promiser": 1.0,
+      "third_party": 0.562
+    },
+    "acct_promise_before_payday": {
+      "agent_recorded_or_pushed": 0.0,
+      "escape": 0.188,
+      "genuine_feasible": 0.25,
+      "genuine_infeasible": 0.167,
+      "repeat_promiser": 0.2,
+      "third_party": 0.0
+    },
+    "acct_is_repeat_promiser": {
+      "agent_recorded_or_pushed": 0.167,
+      "escape": 0.0,
+      "genuine_feasible": 0.17,
+      "genuine_infeasible": 0.233,
+      "repeat_promiser": 0.417,
+      "third_party": 0.188
+    },
+    "acct_prev_ptp_broken_rate": {
+      "agent_recorded_or_pushed": 0.5,
+      "escape": 0.429,
+      "genuine_feasible": 0.39,
+      "genuine_infeasible": 0.54,
+      "repeat_promiser": 0.678,
+      "third_party": 0.543
+    }
+  },
+  "detectors": {
+    "agent_recorded_or_pushed": {
+      "rule": "cust_stated_neither_date_nor_amount == 1",
+      "meaning": "borrower never stated a date or an amount",
+      "n_class": 12,
+      "n_fired": 42,
+      "recall": 0.583,
+      "precision": 0.167
+    },
+    "third_party": {
+      "rule": "lex_third_party_any == 1 OR acct_answerer_is_self == 0",
+      "meaning": "third-party cue, or answerer not recorded as self",
+      "n_class": 16,
+      "n_fired": 14,
+      "recall": 0.75,
+      "precision": 0.857
+    },
+    "genuine_infeasible": {
+      "rule": "acct_promise_before_payday == 1 OR safety_signal_any == 1 OR lex_conditional_any == 1",
+      "meaning": "promise just before payday, hardship/refusal cue, or conditional cue",
+      "n_class": 43,
+      "n_fired": 78,
+      "recall": 0.721,
+      "precision": 0.397
+    },
+    "repeat_promiser": {
+      "rule": "acct_is_repeat_promiser == 1",
+      "meaning": "2+ earlier promises and 2+ broken (accounts snapshot)",
+      "n_class": 24,
+      "n_fired": 33,
+      "recall": 0.417,
+      "precision": 0.303
+    },
+    "escape": {
+      "rule": "lex_termination_any == 1 OR lex_link_refusal_any == 1 OR cust_stated_vague_date_only == 1",
+      "meaning": "termination cue, link refusal, or only a vague date",
+      "n_class": 31,
+      "n_fired": 120,
+      "recall": 0.871,
+      "precision": 0.225
+    }
+  }
+}
