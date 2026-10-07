@@ -146,24 +146,92 @@ csv_folder/ ─► read ─► labels ─┬─► conversation ─┐
 | File | What it does |
 |---|---|
 | `run.py` | **The file you run.** Reads the data, builds the tables, writes the reports. |
-| `tests.py` | 32 automatic checks: no future data leaking in, amounts read correctly, and so on. |
-| `verify_real_samples.py` | 19 expected results on two real calls. |
-| `make_synthetic.py` | Fake data in the real format, for testing. Its numbers mean nothing. |
 | `requirements.txt` | Libraries needed: pandas, numpy, pyarrow. |
 | `README.md` | This file: what the project does, the design decisions, and how to run it. |
 | `.gitignore` | Files Git should not upload (Python caches and similar). |
+| `tests.py` | *Checking tool.* 32 checks that the pipeline is not silently wrong: "23 days" is not read as ₹23, a payment never keeps two promises, nothing from the future or the test split leaks in, one row per promise. Some use small made-up examples; the rest run the whole pipeline and inspect the real output. |
+| `verify_real_samples.py` | *Checking tool.* Runs two real calls through the feature code and checks 19 things a person reading them would notice, e.g. "borrower mentioned hardship", "borrower named no amount". |
+| `make_synthetic.py` | *Checking tool.* Writes fake CSVs in the real format, so the code can be tested without the real data (for teammates who may not see it). Its numbers mean nothing. |
+
+The three checking tools are not part of the pipeline: `run.py` never uses them, and the
+output is the same without them. Run `tests.py` before every commit, and
+`verify_real_samples.py` after changing `lexicons.py` or `extractors.py`.
 
 ### The engine: `ptp_features/`
 
-| File | What it does |
-|---|---|
-| `config.py` | Every setting in one place: folders, payment channels that count, grace days, minimum agent history. |
-| `lexicons.py` | Phrase lists in English, Hindi and Kannada grouped by meaning (hedge, hardship, refusal…). Cleans text and counts hits per group. |
-| `extractors.py` | Finds money amounts and dates (exact or vague). Spots the bot asking "by which date?" or pushing for a minimum payment. |
-| `features.py` | **The heart.** Turns those hits into about 125 conversation features, using turns 0..k only. |
-| `context.py` | Account features (overdue, salary timing, promise vs ability to pay) and agent features (past keep rate, promises per call, late-evening bunching, copy-pasted remarks). |
-| `pipeline.py` | **The conductor.** Loads data, builds labels, calls everything in order, joins the tables, runs the safety checks, saves. |
-| `audit.py` | Writes the four reports. |
+You never run these files directly; `run.py` calls `pipeline.py`, which calls the rest.
+Listed in the order the data flows through them.
+
+#### `config.py` — every setting in one place
+- **Folders:** where to read (`csv_folder/`) and write (`out/`). Can also be set with the
+  `PTP_DATA_DIR` / `PTP_OUT_DIR` environment variables.
+- **Label rules:** which payment channels count as the borrower paying (`upi_app`, `upi_link`,
+  `bbps`, `neft`, `branch_cash`, `cash_field`, but not `nach_represent`), the 3 grace days,
+  and the 80% of the promised amount that must be paid.
+- **Feature rules:** at least 20 past promises before an agent's keep rate is shown, money
+  only counts as money from ₹100 up unless it has "Rs"/"₹", only train accounts feed agent
+  history, post-call events count only up to the promised date.
+- **Why it matters:** to change a rule, change it here. No number is hidden in the other files.
+
+#### `lexicons.py` — what the borrower *said*
+- **Contains:** 10 phrase lists in English, Hindi and Kannada, grouped by meaning: hedge,
+  vague date, conditional, hardship, third party, termination, link refusal, over-agreement,
+  refusal, firm commitment. Hardship and refusal are marked as **safety** categories.
+- **`normalise()`** cleans a sentence first: lowercase, remove `[NAME]`-style placeholders and
+  punctuation, keep `4,200` as `4200`, turn `₹` into `rs`.
+- **Counting:** how many phrases from each list appear in a sentence, and which ones.
+- **Spoken language:** counts common words per language ("hai", "illa", "the") to see which
+  language was actually spoken, whatever the account says.
+- **Tools:** `mine_candidate_terms()` suggests new phrases from the data; `coverage_report()`
+  measures how many sentences match no list at all.
+
+#### `extractors.py` — dates and money
+- **`find_amounts()`:** finds money such as `Rs 12,200`, `4200 rupees`, `5 hazaar`. It rejects
+  numbers that aren't money ("7 days", "2 loans", "5 baje"), and digits that belong to a date.
+- **`find_dates()`:** finds dates and marks each as **exact** (3 April, kal, friday, 5 tarikh)
+  or **vague** (next week, month end, amele).
+- **Bot behaviour:** `is_date_question()` spots the bot asking "by which date?";
+  `is_minimum_ask()` spots it pushing for "at least" a part payment.
+
+#### `features.py` — the heart: conversation features
+- **`prepare_turns()`** takes one call's transcript rows, puts them in order, and runs the
+  two files above on every turn once. Phrases are counted on borrower turns only; dates and
+  amounts on both sides, because *who said it first* matters.
+- **`extract_prefix_features(records, k)`** turns those tags into about 125 numbers, using
+  turns 0..k only. Groups:
+  - *Volume:* turns so far, how much the borrower said.
+  - *Phrases:* count, yes/no, rate, variety, and "in the latest turn", for each list.
+  - *Language:* which language dominated and how mixed it was.
+  - *Structure:* did the borrower ever state a date or amount, who said it first, the
+    promise turn, counteroffers, back-and-forth.
+  - *Timing:* pauses, speech rate, speech-to-text confidence, especially on the promise turn.
+- The same function makes both the in-call rows and the end-call row (see §2).
+
+#### `context.py` — account and agent features
+- **`build_account_features()`** (columns start with `acct_`): joins `accounts.csv` and
+  `lenders.csv` to each promise. Promise size vs overdue, EMI and ability to pay; days
+  before salary day (counted around the month end); past promises and how many broke; time
+  and day of the call. Missing inputs stay blank, never 0.
+- **`build_agent_features()`** (columns start with `agent_`): joins `agents.csv`, then the
+  agent's track record from **before** the call only: past keep rate, promises per connected
+  call, share of promises logged after 6 pm, share of copy-pasted remarks. Only train-split
+  accounts count.
+
+#### `pipeline.py` — the conductor
+- **`load_raw()`** reads the CSVs and checks every required column is there.
+- **`load_or_build_labels()`** uses Phase 1's labels if present, otherwise works out kept or
+  broken from `payments.csv`. Each payment counts toward one promise only.
+- **`build_conversational_tables()`** links each promise to its call and builds the in-call
+  and end-call rows.
+- **`build_postcall_features()`** counts link opens, replies and callbacks up to the
+  promised date.
+- **`run()`** joins everything, runs the safety checks (no post-call, label or annotation
+  column in a feature table), and saves each table as CSV and Parquet.
+
+#### `audit.py` — the reports
+- Sorts every column into *pre-call*, *in-call*, *post-call* or *identifier*.
+- Writes `coverage_report`, `leakage_audit`, `feature_dictionary` and, when
+  `annotated_ptp_sample.csv` is present, `annotation_check` (see §7).
 
 ### Input: `csv_folder/`
 
@@ -207,7 +275,14 @@ python verify_real_samples.py      # 19 checks on two real calls
 ```
 
 `--data-dir` and `--out-dir` override the folders. Takes about ten seconds. Writes the
-three tables plus the label table (CSV and Parquet), and four reports, all into `out/`.
+three tables plus the label table (CSV and Parquet), and the reports, all into `out/`.
+
+To test without the real data:
+
+```bash
+python make_synthetic.py --out-dir data_synthetic
+python tests.py --data-dir data_synthetic
+```
 
 `annotated_ptp_sample.csv` is optional. When it is present, the run also writes
 `annotation_check.md` (see §7). It is a human label, so it is only ever used to *check*
@@ -218,6 +293,14 @@ features and never enters a feature table. The pipeline crashes if it ever does.
 ## 5. The features, in plain words
 
 About 180 columns. They fall into six families.
+
+**How text becomes numbers.** `lexicons.py` and `extractors.py` decide nothing on their own.
+They only *tag* each turn: "1 hedge, 1 termination cue", "vague date: next week, no
+amount". `features.py` then combines the tags across turns 0..k into numbers: counts
+(`lex_hedge_count`), yes/no flags (`cust_stated_any_amount`), who said something first
+(`first_amount_speaker`), and the promise turn itself (the first borrower turn with an exact
+date or an amount), whose pause and speech confidence become features too. A model then
+learns which combinations predict a broken promise.
 
 ### 5a. What the borrower said — the lexicons
 
@@ -475,6 +558,9 @@ Every number in the reports now comes from the real CSVs in `csv_folder/`.
 ---
 
 ## 7. The reports it generates
+
+All reports are written to `out/` on every run. They are generated from the code and data,
+so edit the code, not the report files.
 
 ### `coverage_report.md`
 How much data the pipeline reached: how many promises have transcripts, how many are
