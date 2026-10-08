@@ -1,4 +1,0 @@
-feature,Q1,Q3,IQR,lower_bound,upper_bound,outlier_count,outlier_percentage
-promised_amount,2850.0,16712.5,13862.5,-17943.75,37506.25,378,10.23
-overdue_at_capture,3587.5,19962.5,16375.0,-20975.0,44525.0,372,10.06
-promise_lead_days,2.0,8.0,6.0,-7.0,17.0,424,11.47
