@@ -1,0 +1,9 @@
+check,count,percentage
+negative_promised_amount,0,0.0
+negative_overdue_amount,0,0.0
+zero_promised_amount,0,0.0
+zero_overdue_amount,0,0.0
+promise_before_capture,0,0.0
+missing_attempt_for_call,0,0.0
+missing_visit_for_field,0,0.0
+missing_agent,0,0.0
