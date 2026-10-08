@@ -3,3 +3,11 @@ __pycache__/
 venv/
 .venv/
 out_test/
+# --- FINAL branch: large / regenerable artefacts (see README §8) ---
+outputs/hf/
+outputs/slm_merged/
+outputs/app_cache.pkl
+outputs/app_audit.jsonl
+webapp/frontend/node_modules/
+webapp/frontend/dist/
+*.log

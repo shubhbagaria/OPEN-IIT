@@ -1,0 +1,498 @@
+{
+ "keep_pre_call": {
+  "auc": 0.5673,
+  "auc_raw": 0.5774,
+  "ece_raw": 0.0344,
+  "ece_calibrated": 0.0323,
+  "brier": 0.2014,
+  "n": 563,
+  "base_rate": 0.2824
+ },
+ "keep_in_call": {
+  "auc": 0.7633,
+  "auc_raw": 0.7661,
+  "ece_raw": 0.0514,
+  "ece_calibrated": 0.0368,
+  "brier": 0.1587,
+  "n": 563,
+  "base_rate": 0.2824
+ },
+ "keep_post_call": {
+  "auc": 0.7645,
+  "auc_raw": 0.7694,
+  "ece_raw": 0.0332,
+  "ece_calibrated": 0.0346,
+  "brier": 0.16,
+  "n": 563,
+  "base_rate": 0.2824
+ },
+ "calibration_by_portfolio": [
+  {
+   "portfolio": "consumer_durable",
+   "n": 58,
+   "keep_rate": 0.276,
+   "mean_score": 0.272,
+   "ece": 0.111,
+   "auc": 0.792
+  },
+  {
+   "portfolio": "credit_card",
+   "n": 69,
+   "keep_rate": 0.246,
+   "mean_score": 0.252,
+   "ece": 0.047,
+   "auc": 0.748
+  },
+  {
+   "portfolio": "mfi_jlg",
+   "n": 100,
+   "keep_rate": 0.28,
+   "mean_score": 0.249,
+   "ece": 0.058,
+   "auc": 0.797
+  },
+  {
+   "portfolio": "msme",
+   "n": 55,
+   "keep_rate": 0.236,
+   "mean_score": 0.224,
+   "ece": 0.178,
+   "auc": 0.945
+  },
+  {
+   "portfolio": "pl_salaried",
+   "n": 163,
+   "keep_rate": 0.325,
+   "mean_score": 0.262,
+   "ece": 0.086,
+   "auc": 0.688
+  },
+  {
+   "portfolio": "two_wheeler",
+   "n": 118,
+   "keep_rate": 0.271,
+   "mean_score": 0.282,
+   "ece": 0.041,
+   "auc": 0.788
+  }
+ ],
+ "category_vs_ground_truth": {
+  "report": {
+   "genuine_feasible": {
+    "precision": 0.7378640776699029,
+    "recall": 0.4720496894409938,
+    "f1-score": 0.5757575757575758,
+    "support": 161.0
+   },
+   "genuine_infeasible": {
+    "precision": 0.5154639175257731,
+    "recall": 0.819672131147541,
+    "f1-score": 0.6329113924050633,
+    "support": 122.0
+   },
+   "escape": {
+    "precision": 0.8070175438596491,
+    "recall": 0.6301369863013698,
+    "f1-score": 0.7076923076923077,
+    "support": 73.0
+   },
+   "third_party": {
+    "precision": 0.9333333333333333,
+    "recall": 0.9824561403508771,
+    "f1-score": 0.9572649572649573,
+    "support": 57.0
+   },
+   "repeat_promiser": {
+    "precision": 0.7604166666666666,
+    "recall": 0.7087378640776699,
+    "f1-score": 0.7336683417085427,
+    "support": 103.0
+   },
+   "agent_recorded_or_pushed": {
+    "precision": 0.8301886792452831,
+    "recall": 0.9361702127659575,
+    "f1-score": 0.88,
+    "support": 47.0
+   },
+   "accuracy": 0.7015985790408525,
+   "macro avg": {
+    "precision": 0.764047369716768,
+    "recall": 0.7582038373474015,
+    "f1-score": 0.7478824291380746,
+    "support": 563.0
+   },
+   "weighted avg": {
+    "precision": 0.7302607100105649,
+    "recall": 0.7015985790408525,
+    "f1-score": 0.6981627705009029,
+    "support": 563.0
+   }
+  },
+  "confusion": [
+   [
+    76,
+    48,
+    7,
+    2,
+    20,
+    8
+   ],
+   [
+    20,
+    100,
+    2,
+    0,
+    0,
+    0
+   ],
+   [
+    1,
+    21,
+    46,
+    1,
+    3,
+    1
+   ],
+   [
+    0,
+    1,
+    0,
+    56,
+    0,
+    0
+   ],
+   [
+    4,
+    24,
+    2,
+    0,
+    73,
+    0
+   ],
+   [
+    2,
+    0,
+    0,
+    1,
+    0,
+    44
+   ]
+  ]
+ },
+ "category_argmax_vs_ground_truth": {
+  "report": {
+   "genuine_feasible": {
+    "precision": 0.6748466257668712,
+    "recall": 0.6832298136645962,
+    "f1-score": 0.6790123456790124,
+    "support": 161.0
+   },
+   "genuine_infeasible": {
+    "precision": 0.8111111111111111,
+    "recall": 0.5983606557377049,
+    "f1-score": 0.6886792452830188,
+    "support": 122.0
+   },
+   "escape": {
+    "precision": 0.7108433734939759,
+    "recall": 0.8082191780821918,
+    "f1-score": 0.7564102564102564,
+    "support": 73.0
+   },
+   "third_party": {
+    "precision": 0.9491525423728814,
+    "recall": 0.9824561403508771,
+    "f1-score": 0.9655172413793104,
+    "support": 57.0
+   },
+   "repeat_promiser": {
+    "precision": 0.7478991596638656,
+    "recall": 0.8640776699029126,
+    "f1-score": 0.8018018018018018,
+    "support": 103.0
+   },
+   "agent_recorded_or_pushed": {
+    "precision": 0.8367346938775511,
+    "recall": 0.8723404255319149,
+    "f1-score": 0.8541666666666666,
+    "support": 47.0
+   },
+   "accuracy": 0.7602131438721137,
+   "macro avg": {
+    "precision": 0.7884312510477094,
+    "recall": 0.8014473138783663,
+    "f1-score": 0.7909312595366779,
+    "support": 563.0
+   },
+   "weighted avg": {
+    "precision": 0.7636931927921125,
+    "recall": 0.7602131438721137,
+    "f1-score": 0.7572357122101911,
+    "support": 563.0
+   }
+  },
+  "confusion": [
+   [
+    110,
+    11,
+    11,
+    1,
+    21,
+    7
+   ],
+   [
+    34,
+    73,
+    11,
+    0,
+    4,
+    0
+   ],
+   [
+    6,
+    1,
+    59,
+    1,
+    5,
+    1
+   ],
+   [
+    1,
+    0,
+    0,
+    56,
+    0,
+    0
+   ],
+   [
+    7,
+    5,
+    2,
+    0,
+    89,
+    0
+   ],
+   [
+    5,
+    0,
+    0,
+    1,
+    0,
+    41
+   ]
+  ]
+ },
+ "category_ovr_auc_macro": 0.9437,
+ "category_ece_top1": 0.064,
+ "category_vs_human_test": {
+  "n": 27,
+  "acc": 0.778,
+  "macro_f1": 0.77
+ },
+ "hardship_misclassified_as_aggressive_argmax": 0.123,
+ "hardship_misclassified_as_aggressive_costsens": 0.0164,
+ "streaming_curve": [
+  {
+   "call_fraction": "0-25%",
+   "n": 397,
+   "keep_auc": 0.6896,
+   "keep_ece": 0.07,
+   "category_acc": 0.3627,
+   "category_macro_f1": 0.2196
+  },
+  {
+   "call_fraction": "25-50%",
+   "n": 449,
+   "keep_auc": 0.7239,
+   "keep_ece": 0.0449,
+   "category_acc": 0.5902,
+   "category_macro_f1": 0.5999
+  },
+  {
+   "call_fraction": "50-75%",
+   "n": 474,
+   "keep_auc": 0.7759,
+   "keep_ece": 0.053,
+   "category_acc": 0.6667,
+   "category_macro_f1": 0.6804
+  },
+  {
+   "call_fraction": "75-99%",
+   "n": 328,
+   "keep_auc": 0.7761,
+   "keep_ece": 0.0566,
+   "category_acc": 0.6555,
+   "category_macro_f1": 0.5468
+  },
+  {
+   "call_fraction": "99-100%",
+   "n": 484,
+   "keep_auc": 0.7865,
+   "keep_ece": 0.0561,
+   "category_acc": 0.6963,
+   "category_macro_f1": 0.7206
+  }
+ ],
+ "heard_enough_trigger": {
+  "calls": 484,
+  "trigger_fired_share": 0.8781,
+  "median_turn_fraction_at_trigger": 0.667,
+  "median_seconds_before_call_end": 7.6,
+  "category_agreement_trigger_vs_final": 0.9576,
+  "keep_auc_at_trigger": 0.7684,
+  "category_acc_at_trigger": 0.72
+ },
+ "label_pipeline_gold_cv": {
+  "rules_only": {
+   "acc": 0.67,
+   "macro_f1": 0.693
+  },
+  "rules+self_training": {
+   "acc": 0.67,
+   "macro_f1": 0.69
+  }
+ },
+ "label_distribution": {
+  "genuine_feasible": 1012,
+  "repeat_promiser": 832,
+  "genuine_infeasible": 708,
+  "escape": 492,
+  "third_party": 345,
+  "agent_recorded_or_pushed": 307
+ },
+ "label_sources": {
+  "pseudo_label_low_conf": 1802,
+  "pseudo_label_high_conf": 1694,
+  "human_annotation": 200
+ },
+ "outcome_status": {
+  "broken": 1977,
+  "kept_on_time": 1023,
+  "partial": 436,
+  "kept_late": 260
+ },
+ "kept_rate": 0.2768,
+ "cured_rate": 0.3471,
+ "in_call_top_features": {
+  "promise_lag_days": 0.2875,
+  "firmness_score": 0.1647,
+  "hedge_exit_score": 0.161,
+  "cust_pause_max": 0.1565,
+  "promised_dom": 0.1425,
+  "amount_x_atp": 0.0956,
+  "n_c_amount": 0.0863,
+  "is_salary_window": 0.0615,
+  "ability_to_pay_estimate": 0.0526,
+  "n_c_hedge": 0.0484,
+  "n_c_exit": 0.0462,
+  "bureau_ord": 0.0416,
+  "salary_credit_day": 0.0388,
+  "n_long_hesitation": 0.0383,
+  "income_type": 0.0342,
+  "days_after_salary": 0.0338,
+  "answer_rate_30d": 0.0334,
+  "overdue_at_capture": 0.0274,
+  "elapsed_s": 0.0273,
+  "amount_to_emi": 0.0268,
+  "outstanding": 0.0268,
+  "agent_keep_rate": 0.0259,
+  "n_c_ack_to_proposal": 0.0253,
+  "lender_id": 0.025,
+  "n_c_date": 0.0236
+ },
+ "post_call_top_features": {
+  "firmness_score": 0.2115,
+  "promise_lag_days": 0.2075,
+  "hedge_exit_score": 0.1889,
+  "cust_pause_max": 0.1579,
+  "pc_hours_to_link_open": 0.1286,
+  "pc_confirmation_reply_yes": 0.107,
+  "n_c_amount": 0.0945,
+  "promised_dom": 0.0924,
+  "ability_to_pay_estimate": 0.0582,
+  "amount_x_atp": 0.0449,
+  "elapsed_s": 0.0442,
+  "n_c_hedge": 0.0384,
+  "n_long_hesitation": 0.0362,
+  "agent_words": 0.0351,
+  "is_salary_window": 0.031
+ },
+ "drift_psi_train_vs_test": {
+  "promise_lag_days": 0.0183,
+  "firmness_score": 0.0371,
+  "hedge_exit_score": 0.0216,
+  "cust_pause_max": 0.0288,
+  "promised_dom": 0.0144,
+  "amount_x_atp": 0.0167,
+  "n_c_amount": 0.0029,
+  "is_salary_window": 0.0,
+  "ability_to_pay_estimate": 0.0553,
+  "n_c_hedge": 0.0037,
+  "n_c_exit": 0.0024,
+  "bureau_ord": 0.0021,
+  "salary_credit_day": 0.0982,
+  "n_long_hesitation": 0.0
+ },
+ "crossfit_all_ptps": {
+  "keep_auc_in_call": 0.7854,
+  "keep_auc_pre_call": 0.5792,
+  "keep_auc_post_call": 0.7834,
+  "keep_ece_in_call": 0.0253,
+  "category_acc": 0.7286,
+  "category_macro_f1": 0.7664
+ },
+ "audit": {
+  "hardship_signal_ptps": 1596,
+  "hardship_routed_to_aggressive_after_guardrails": 0,
+  "hardship_softened_by_guardrail": 452,
+  "third_party_ptps": 342,
+  "third_party_utterances_with_debt_disclosure": 0,
+  "any_utterance_with_banned_language": 0,
+  "historical_agent_disclosure_after_3p_identified": {
+   "calls_with_third_party": 428,
+   "calls_with_post_identification_disclosure": 334,
+   "share": 0.7804
+  }
+ },
+ "business": {
+  "n_test_ptps": 563,
+  "observed_keep_rate": 0.2824,
+  "broken_flagged_before_parking": 0.8837,
+  "kept_flagged_false_alarm": 0.4277,
+  "precision_of_flag": 0.84,
+  "contact_days_unlocked_per_1000_ptps": 1893.4,
+  "avg_parking_days_baseline": 7.26,
+  "avg_parking_days_dynamic": 4.77,
+  "scenarios": [
+   {
+    "conversion_of_flagged_broken": 0.08,
+    "projected_keep_rate": 0.3331,
+    "broken_rate_reduction_pp": 5.07,
+    "escalation_cost_avoided_per_1000": 8307.0,
+    "false_alarm_cost_per_1000": 272.0,
+    "recovery_lift_per_1000_rs_low": 70337.0,
+    "recovery_lift_per_1000_rs_high": 788064.0
+   },
+   {
+    "conversion_of_flagged_broken": 0.15,
+    "projected_keep_rate": 0.3775,
+    "broken_rate_reduction_pp": 9.51,
+    "escalation_cost_avoided_per_1000": 15575.0,
+    "false_alarm_cost_per_1000": 272.0,
+    "recovery_lift_per_1000_rs_low": 131883.0,
+    "recovery_lift_per_1000_rs_high": 1477620.0
+   },
+   {
+    "conversion_of_flagged_broken": 0.22,
+    "projected_keep_rate": 0.4219,
+    "broken_rate_reduction_pp": 13.95,
+    "escalation_cost_avoided_per_1000": 22844.0,
+    "false_alarm_cost_per_1000": 272.0,
+    "recovery_lift_per_1000_rs_low": 193428.0,
+    "recovery_lift_per_1000_rs_high": 2167176.0
+   }
+  ],
+  "rct_ptps_per_arm_for_3pp": 3644
+ },
+ "runtime_s": 223.5
+}

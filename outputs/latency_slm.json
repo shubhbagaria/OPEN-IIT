@@ -1,0 +1,43 @@
+{
+ "gpu": "NVIDIA GeForce RTX 3050 A Laptop GPU",
+ "torch": "2.14.0+cu126",
+ "rows": [
+  {
+   "precision": "fp16",
+   "weights_gb": 0.996,
+   "peak_vram_gb": 1.279,
+   "vram_sla_pass": false,
+   "mean_prompt_tokens": 330,
+   "cold_ttft_p50_ms": 33.0,
+   "cold_ttft_p95_ms": 40.5,
+   "incremental_ttft_p50_ms": 27.4,
+   "incremental_ttft_p95_ms": 38.2,
+   "ttft_sla_pass": true,
+   "decode_tok_per_s": 46.2,
+   "e2e_ms_48_tokens_p50": 1034.2,
+   "incremental_vs_cold_code_agreement": 0.975
+  },
+  {
+   "precision": "nf4",
+   "weights_gb": 0.548,
+   "peak_vram_gb": 0.74,
+   "vram_sla_pass": true,
+   "mean_prompt_tokens": 330,
+   "cold_ttft_p50_ms": 56.4,
+   "cold_ttft_p95_ms": 69.4,
+   "incremental_ttft_p50_ms": 46.7,
+   "incremental_ttft_p95_ms": 56.6,
+   "ttft_sla_pass": true,
+   "decode_tok_per_s": 29.6,
+   "e2e_ms_48_tokens_p50": 1630.0,
+   "incremental_vs_cold_code_agreement": 0.9
+  }
+ ],
+ "nf4_quality_test_final": {
+  "precision": "nf4",
+  "temperature": 1.127,
+  "acc": 0.6054,
+  "macro_f1": 0.6424,
+  "ece": 0.0393
+ }
+}

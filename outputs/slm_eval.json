@@ -1,0 +1,139 @@
+{
+ "temperature": 1.156,
+ "final": {
+  "n": 484,
+  "acc": 0.6446,
+  "macro_f1": 0.6731,
+  "ece_top1_calibrated": 0.0423,
+  "ece_top1_uncalibrated": 0.0341
+ },
+ "mid_call_prefix": {
+  "n": 484,
+  "acc": 0.6405,
+  "macro_f1": 0.6686,
+  "ece_top1_calibrated": 0.0554,
+  "ece_top1_uncalibrated": 0.0459
+ },
+ "final_report": "                          precision    recall  f1-score   support\n\n        genuine_feasible      0.561     0.696     0.621       138\n      genuine_infeasible      0.639     0.434     0.517       122\n                  escape      0.606     0.548     0.576        73\n             third_party      0.949     0.982     0.966        57\n         repeat_promiser      0.464     0.553     0.505        47\nagent_recorded_or_pushed      0.837     0.872     0.854        47\n\n                accuracy                          0.645       484\n               macro avg      0.676     0.681     0.673       484\n            weighted avg      0.651     0.645     0.640       484\n",
+ "final_confusion": [
+  [
+   96,
+   19,
+   8,
+   1,
+   8,
+   6
+  ],
+  [
+   48,
+   53,
+   11,
+   0,
+   10,
+   0
+  ],
+  [
+   13,
+   7,
+   40,
+   1,
+   11,
+   1
+  ],
+  [
+   1,
+   0,
+   0,
+   56,
+   0,
+   0
+  ],
+  [
+   9,
+   4,
+   7,
+   0,
+   26,
+   1
+  ],
+  [
+   4,
+   0,
+   0,
+   1,
+   1,
+   41
+  ]
+ ],
+ "hardship_to_aggressive_rate": 0.1721,
+ "generation": {
+  "n": 150,
+  "format_valid": 1.0,
+  "utterance_exact_match": 0.3667,
+  "compliance_violations_raw_slm": 0,
+  "compliance_violations_after_serving_guardrail": 0,
+  "category_match": 0.6667
+ },
+ "generation_samples": [
+  {
+   "ptp_id": "PTP003244",
+   "target": "5|repeat_promiser|Sir, pichle commitments poore nahi ho paaye, isliye is baar ek chhota part payment ₹500 aaj zaroori hai taaki promise record ho sake. Nahi hua toh account senior recovery team ke review mein jaa sakta hai. Link bhej doon?",
+   "generated": "1|genuine_feasible|Bahut badhiya, 17 Jun ko ₹1,150 confirm hai. Main abhi WhatsApp pe payment link bhej raha hoon, ek din pehle reminder bhi aayega."
+  },
+  {
+   "ptp_id": "PTP003656",
+   "target": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad 2nd rakh dein, ya aaj sirf ₹2,000 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon.",
+   "generated": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad 7th rakh dein, ya aaj sirf ₹1,000 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon."
+  },
+  {
+   "ptp_id": "PTP001362",
+   "target": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹1,700 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon.",
+   "generated": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹1,000 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon."
+  },
+  {
+   "ptp_id": "PTP003438",
+   "target": "5|repeat_promiser|Sir, the earlier commitments could not be met, so this time a part payment of ₹900 today is needed to record the promise. Otherwise the account may go to the senior recovery team for review. Shall I send the link?",
+   "generated": "5|repeat_promiser|I understand this is a difficult time. Shall we move the date to two days after your salary, after your salary, or would a small ₹800 today be manageable? I can also check a restructuring option for you."
+  },
+  {
+   "ptp_id": "PTP002340",
+   "target": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹500 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon.",
+   "generated": "1|genuine_feasible|Bahut badhiya, 23 May ko ₹1,200 confirm hai. Main abhi WhatsApp pe payment link bhej raha hoon, ek din pehle reminder bhi aayega."
+  },
+  {
+   "ptp_id": "PTP001190",
+   "target": "1|genuine_feasible|Great, ₹16,000 on 26 Apr is confirmed. I am sending the payment link on WhatsApp now and you will get a reminder a day before.",
+   "generated": "6|agent_recorded_or_pushed|Just to confirm in your own words - will you be able to pay ₹16,000 on 26 Apr? If not, please tell me a date that works for you."
+  },
+  {
+   "ptp_id": "PTP002955",
+   "target": "3|escape|Nimma paristhiti arthavaagutte. Salary aada mele salary aada 2 dina amele ge date maadona, illa andre ivattu ₹2,000 maatra saaku. Beku andre restructuring option kooda nodona.",
+   "generated": "2|genuine_infeasible|Nimma paristhiti arthavaagutte. Salary aada mele salary aada 2 dina amele ge date maadona, illa andre ivattu ₹800 maatra saaku. Beku andre restructuring option kooda nodona."
+  },
+  {
+   "ptp_id": "PTP003011",
+   "target": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹2,000 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon.",
+   "generated": "1|genuine_feasible|Bahut badhiya, 28 Jun ko ₹20,000 confirm hai. Main abhi WhatsApp pe payment link bhej raha hoon, ek din pehle reminder bhi aayega."
+  },
+  {
+   "ptp_id": "PTP003687",
+   "target": "5|repeat_promiser|Sir, pichle commitments poore nahi ho paaye, isliye is baar ek chhota part payment ₹1,200 aaj zaroori hai taaki promise record ho sake. Nahi hua toh account senior recovery team ke review mein jaa sakta hai. Link bhej doon?",
+   "generated": "5|repeat_promiser|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹1,000 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon."
+  },
+  {
+   "ptp_id": "PTP001680",
+   "target": "1|genuine_feasible|Bahut badhiya, 31 May ko ₹10,100 confirm hai. Main abhi WhatsApp pe payment link bhej raha hoon, ek din pehle reminder bhi aayega.",
+   "generated": "1|genuine_feasible|Bahut badhiya, 31 May ko ₹10,100 confirm hai. Main abhi WhatsApp pe payment link bhej raha hoon, ek din pehle reminder bhi aayega."
+  },
+  {
+   "ptp_id": "PTP000106",
+   "target": "1|genuine_feasible|Thumba olledu, 27 Apr ge ₹12,050 confirm. Eega WhatsApp nalli payment link kalistini, ondu dina modalu reminder barutte.",
+   "generated": "1|genuine_feasible|Thumba olledu, 27 Apr ge ₹12,050 confirm. Eega WhatsApp nalli payment link kalistini, ondu dina modalu reminder barutte."
+  },
+  {
+   "ptp_id": "PTP001373",
+   "target": "3|escape|Bas ek minute sir. Main abhi ₹1,000 ka link bhej raha hoon, abhi kar denge toh aapka account update ho jayega aur reminder calls kam ho jayengi. Baaki 06 May tak. Theek hai?",
+   "generated": "2|genuine_infeasible|Main samajh sakta hoon, aapki situation mushkil hai. Kya hum date salary ke baad salary ke 2 din baad rakh dein, ya aaj sirf ₹800 jitna ho sake? Zaroorat ho toh main restructuring option bhi check karwa deta hoon."
+  }
+ ]
+}

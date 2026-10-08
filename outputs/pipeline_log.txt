@@ -1,0 +1,142 @@
+[build] features in 19.6s  ptps=3696 turns=39194
+[labels] self-training history: [{'round': 0, 'n_train': 2752, 'temperature': np.float64(2.37), 'gold_oof_acc': np.float64(0.68)}, {'round': 1, 'n_train': 2825, 'temperature': np.float64(2.379), 'gold_oof_acc': np.float64(0.68)}, {'round': 2, 'n_train': 2859, 'temperature': np.float64(2.38), 'gold_oof_acc': np.float64(0.67)}, {'round': 3, 'n_train': 2861, 'temperature': np.float64(2.375), 'gold_oof_acc': np.float64(0.68)}]
+[labels] rule labeller vs human (in-sample, rules were designed with this sample): acc=0.670 macroF1=0.693
+[labels] held-out gold agreement (5-fold): {'rules_only': {'acc': 0.67, 'macro_f1': 0.693}, 'rules+self_training': {'acc': 0.67, 'macro_f1': 0.69}}
+[data] snapshots=17838  ptps: train=2572 val=561 test=563  keep-rate=0.277
+[keep:pre_call] {'auc': 0.5673, 'auc_raw': 0.5774, 'ece_raw': 0.0344, 'ece_calibrated': 0.0323, 'brier': 0.2014, 'n': 563, 'base_rate': np.float64(0.2824)}
+[keep:in_call] {'auc': 0.7633, 'auc_raw': 0.7661, 'ece_raw': 0.0514, 'ece_calibrated': 0.0368, 'brier': 0.1587, 'n': 563, 'base_rate': np.float64(0.2824)}
+[keep:post_call] {'auc': 0.7645, 'auc_raw': 0.7694, 'ece_raw': 0.0332, 'ece_calibrated': 0.0346, 'brier': 0.16, 'n': 563, 'base_rate': np.float64(0.2824)}
+[keep:in_call] per-portfolio calibration:        portfolio   n  keep_rate  mean_score   ece   auc
+consumer_durable  58      0.276       0.272 0.111 0.792
+     credit_card  69      0.246       0.252 0.047 0.748
+         mfi_jlg 100      0.280       0.249 0.058 0.797
+            msme  55      0.236       0.224 0.178 0.945
+     pl_salaried 163      0.325       0.262 0.086 0.688
+     two_wheeler 118      0.271       0.282 0.041 0.788
+[category] cost-sensitive decision (test, GT=gold+pseudo)
+                          precision    recall  f1-score   support
+
+        genuine_feasible      0.738     0.472     0.576       161
+      genuine_infeasible      0.515     0.820     0.633       122
+                  escape      0.807     0.630     0.708        73
+             third_party      0.933     0.982     0.957        57
+         repeat_promiser      0.760     0.709     0.734       103
+agent_recorded_or_pushed      0.830     0.936     0.880        47
+
+                accuracy                          0.702       563
+               macro avg      0.764     0.758     0.748       563
+            weighted avg      0.730     0.702     0.698       563
+
+confusion (rows=true, cols=pred, order=['genuine_feasible', 'genuine_infeasible', 'escape', 'third_party', 'repeat_promiser', 'agent_recorded_or_pushed']):
+[[ 76  48   7   2  20   8]
+ [ 20 100   2   0   0   0]
+ [  1  21  46   1   3   1]
+ [  0   1   0  56   0   0]
+ [  4  24   2   0  73   0]
+ [  2   0   0   1   0  44]]
+[category] argmax (test, GT=gold+pseudo)
+                          precision    recall  f1-score   support
+
+        genuine_feasible      0.675     0.683     0.679       161
+      genuine_infeasible      0.811     0.598     0.689       122
+                  escape      0.711     0.808     0.756        73
+             third_party      0.949     0.982     0.966        57
+         repeat_promiser      0.748     0.864     0.802       103
+agent_recorded_or_pushed      0.837     0.872     0.854        47
+
+                accuracy                          0.760       563
+               macro avg      0.788     0.801     0.791       563
+            weighted avg      0.764     0.760     0.757       563
+
+confusion (rows=true, cols=pred, order=['genuine_feasible', 'genuine_infeasible', 'escape', 'third_party', 'repeat_promiser', 'agent_recorded_or_pushed']):
+[[110  11  11   1  21   7]
+ [ 34  73  11   0   4   0]
+ [  6   1  59   1   5   1]
+ [  1   0   0  56   0   0]
+ [  7   5   2   0  89   0]
+ [  5   0   0   1   0  41]]
+[category] vs human annotations in test split: {'n': 27, 'acc': 0.778, 'macro_f1': 0.77}
+[category] hardship->aggressive  argmax=0.123  cost-sensitive=0.0164
+[streaming] quality vs share of call heard:
+call_fraction   n  keep_auc  keep_ece  category_acc  category_macro_f1
+        0-25% 397    0.6896    0.0700        0.3627             0.2196
+       25-50% 449    0.7239    0.0449        0.5902             0.5999
+       50-75% 474    0.7759    0.0530        0.6667             0.6804
+       75-99% 328    0.7761    0.0566        0.6555             0.5468
+      99-100% 484    0.7865    0.0561        0.6963             0.7206
+[streaming] heard-enough trigger: {'calls': 484, 'trigger_fired_share': np.float64(0.8781), 'median_turn_fraction_at_trigger': np.float64(0.667), 'median_seconds_before_call_end': np.float64(7.6), 'category_agreement_trigger_vs_final': np.float64(0.9576), 'keep_auc_at_trigger': 0.7684, 'category_acc_at_trigger': 0.72}
+[shap] top in-call drivers:
+promise_lag_days           0.2875
+firmness_score             0.1647
+hedge_exit_score           0.1610
+cust_pause_max             0.1565
+promised_dom               0.1425
+amount_x_atp               0.0956
+n_c_amount                 0.0863
+is_salary_window           0.0615
+ability_to_pay_estimate    0.0526
+n_c_hedge                  0.0484
+n_c_exit                   0.0462
+bureau_ord                 0.0416
+salary_credit_day          0.0388
+n_long_hesitation          0.0383
+income_type                0.0342
+[crossfit] fold 0 done (767 ptps)
+[crossfit] fold 1 done (750 ptps)
+[crossfit] fold 2 done (710 ptps)
+[crossfit] fold 3 done (721 ptps)
+[crossfit] fold 4 done (748 ptps)
+[crossfit] all-PTP out-of-fold: {'keep_auc_in_call': 0.7854, 'keep_auc_pre_call': 0.5792, 'keep_auc_post_call': 0.7834, 'keep_ece_in_call': 0.0253, 'category_acc': 0.7286, 'category_macro_f1': 0.7664}
+[audit] {
+ "hardship_signal_ptps": 1596,
+ "hardship_routed_to_aggressive_after_guardrails": 0,
+ "hardship_softened_by_guardrail": 452,
+ "third_party_ptps": 342,
+ "third_party_utterances_with_debt_disclosure": 0,
+ "any_utterance_with_banned_language": 0,
+ "historical_agent_disclosure_after_3p_identified": {
+  "calls_with_third_party": 428,
+  "calls_with_post_identification_disclosure": 334,
+  "share": 0.7804
+ }
+}
+[business] {
+ "n_test_ptps": 563,
+ "observed_keep_rate": 0.2824,
+ "broken_flagged_before_parking": 0.8837,
+ "kept_flagged_false_alarm": 0.4277,
+ "precision_of_flag": 0.84,
+ "contact_days_unlocked_per_1000_ptps": 1893.4,
+ "avg_parking_days_baseline": 7.26,
+ "avg_parking_days_dynamic": 4.77,
+ "scenarios": [
+  {
+   "conversion_of_flagged_broken": 0.08,
+   "projected_keep_rate": 0.3331,
+   "broken_rate_reduction_pp": 5.07,
+   "escalation_cost_avoided_per_1000": 8307.0,
+   "false_alarm_cost_per_1000": 272.0,
+   "recovery_lift_per_1000_rs_low": 70337.0,
+   "recovery_lift_per_1000_rs_high": 788064.0
+  },
+  {
+   "conversion_of_flagged_broken": 0.15,
+   "projected_keep_rate": 0.3775,
+   "broken_rate_reduction_pp": 9.51,
+   "escalation_cost_avoided_per_1000": 15575.0,
+   "false_alarm_cost_per_1000": 272.0,
+   "recovery_lift_per_1000_rs_low": 131883.0,
+   "recovery_lift_per_1000_rs_high": 1477620.0
+  },
+  {
+   "conversion_of_flagged_broken": 0.22,
+   "projected_keep_rate": 0.4219,
+   "broken_rate_reduction_pp": 13.95,
+   "escalation_cost_avoided_per_1000": 22844.0,
+   "false_alarm_cost_per_1000": 272.0,
+   "recovery_lift_per_1000_rs_low": 193428.0,
+   "recovery_lift_per_1000_rs_high": 2167176.0
+  }
+ ],
+ "rct_ptps_per_arm_for_3pp": 3644
+}

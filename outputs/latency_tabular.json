@@ -1,0 +1,9 @@
+{
+ "calls": 120,
+ "turns": 1432,
+ "p50_ms": 59.86,
+ "p95_ms": 78.42,
+ "p99_ms": 95.67,
+ "max_ms": 113.87,
+ "device": "CPU (feature extraction + LightGBM + policy)"
+}
