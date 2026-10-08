@@ -351,9 +351,7 @@ run_all.py           python run_all.py [--slm]
 ```
 Dependencies: Python 3.11, pandas 3, numpy, scikit-learn, lightgbm, scipy, matplotlib; for `--slm`: torch (CUDA), transformers ≥5, peft, bitsandbytes, plus the base weights in `outputs/hf/Qwen2.5-0.5B-Instruct` (`huggingface_hub.snapshot_download`).
 
-*Model weights are not in the git repository* (each `model.safetensors` is 942 MB; GitHub's limit is 100 MB per file). The LoRA adapter (`outputs/slm_lora/`, 34 MB) *is* committed. To restore:
-1. Base model: `python -c "from huggingface_hub import snapshot_download; snapshot_download('Qwen/Qwen2.5-0.5B-Instruct', local_dir='outputs/hf/Qwen2.5-0.5B-Instruct')"`.
-2. Merged model `outputs/slm_merged/`: merge the adapter into the base model with peft (`PeftModel.from_pretrained(base, 'outputs/slm_lora').merge_and_unload().save_pretrained('outputs/slm_merged')`, and save the tokenizer alongside), or download it from the project's Hugging Face model repo once published.
+*Model weights are not in the git repository* (each `model.safetensors` is 942 MB; GitHub's limit is 100 MB per file). They are published on the Hugging Face Hub at **[Shubhbagaria12/QWEN_OPENIIT](https://huggingface.co/Shubhbagaria12/QWEN_OPENIIT)**: merged fine-tuned weights at the repo root, the LoRA adapter in `lora_adapter/`, plus a model card with usage and results. **No manual step is needed:** `ptp_copilot.slm.load` (used by the evaluation, the benchmark and the web app) downloads the merged model into `outputs/slm_merged/` on first use, and `slm.train` downloads the base model `Qwen/Qwen2.5-0.5B-Instruct` into `outputs/hf/`. Override the source with `PTP_HF_MODEL_REPO=<user/repo>`. The LoRA adapter is also committed in git (`outputs/slm_lora/`, 34 MB).
 
 *Environment note:* the 2.6 GB CUDA torch wheel could not be downloaded over this machine's connection. The GPU runs therefore borrowed an existing local CUDA torch 2.14.0+cu126 build *read-only* via `PTP_TORCH_SITE=<other env>/Lib/site-packages`; `slm.py` appends that path *after* its own, so this environment's packages always take priority. With torch installed normally, leave the variable unset.
 

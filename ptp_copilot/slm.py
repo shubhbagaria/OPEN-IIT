@@ -35,7 +35,19 @@ from .config import CATEGORIES, OUT_DIR, SEED, TTFT_SLA_MS, VRAM_SLA_GB
 BASE_DIR = OUT_DIR / "hf" / "Qwen2.5-0.5B-Instruct"
 LORA_DIR = OUT_DIR / "slm_lora"
 MERGED_DIR = OUT_DIR / "slm_merged"
+HF_BASE_REPO = "Qwen/Qwen2.5-0.5B-Instruct"
+HF_MODEL_REPO = os.environ.get("PTP_HF_MODEL_REPO", "Shubhbagaria12/QWEN_OPENIIT")  # fine-tuned, merged weights
 CODES = [str(i + 1) for i in range(len(CATEGORIES))]
+
+
+def ensure_local(local_dir, repo_id):
+    """Model weights are not in git (942 MB): download them from the Hugging Face Hub on first use."""
+    if not (local_dir / "model.safetensors").exists():
+        from huggingface_hub import snapshot_download
+        print(f"[slm] {local_dir} missing; downloading {repo_id} from the Hugging Face Hub")
+        snapshot_download(repo_id, local_dir=str(local_dir), allow_patterns=[
+            "*.json", "*.safetensors", "*.jinja", "*.txt"], ignore_patterns=["lora_adapter/*"])
+    return local_dir
 SYS = ("You are a debt-collection call copilot. Read the live call and answer as "
        "<code>|<category>|<next agent line>. Codes: " +
        " ".join(f"{c}={n}" for c, n in zip(CODES, CATEGORIES)) +
@@ -120,6 +132,7 @@ def train(epochs=2, lr=2e-4, bs=2, accum=8, max_len=900, max_train=2400, code_we
     torch.manual_seed(SEED)
     df = load_sft()
     trn = df[df["split"] == "train"].sample(frac=1, random_state=SEED).head(max_train)
+    ensure_local(BASE_DIR, HF_BASE_REPO)
     tok = AutoTokenizer.from_pretrained(BASE_DIR)
     model = AutoModelForCausalLM.from_pretrained(BASE_DIR, dtype=torch.bfloat16).cuda()
     model.gradient_checkpointing_enable()
@@ -186,7 +199,7 @@ def train(epochs=2, lr=2e-4, bs=2, accum=8, max_len=900, max_train=2400, code_we
 def load(precision="fp16", path=None):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    path = path or MERGED_DIR
+    path = path or ensure_local(MERGED_DIR, HF_MODEL_REPO)
     tok = AutoTokenizer.from_pretrained(path)
     if precision == "nf4":
         from transformers import BitsAndBytesConfig
