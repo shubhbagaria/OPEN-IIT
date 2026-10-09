@@ -55,7 +55,7 @@ for (const s of [tp, hard]) {
   }
   t = await text();
   check(`simulation progressive (${s.category})`, midTurns !== null && midTurns < s.n_turns, `mid-run turns shown=${midTurns}, score=${midScore}`);
-  check(`simulation completed (${s.category})`, t.includes("After the call: ground truth") && t.includes("Treatment recommendation"));
+  check(`simulation completed (${s.category})`, t.includes("After the call: ground truth") && t.includes("Copilot now") && t.toLowerCase().includes("say next"));
   check(`qwen output visible (${s.category})`, /Qwen SLM[\s\S]{0,80}(agrees|disagrees)/.test(t));
   if (s.category === "third_party") check("privacy safeguard banner shown", t.includes("PRIVACY SAFEGUARD ACTIVE"));
   if (s.category === "genuine_infeasible") check("hardship safeguard banner shown", t.includes("HARDSHIP SAFEGUARD ACTIVE"));

@@ -211,3 +211,16 @@ table.t tbody tr.sel { background: var(--light-blue); }
   .input { min-width: 0; flex: 1; }
   .transcript { height: 420px; }
 }
+
+/* ---------------- live call: "Copilot now" summary */
+.banner.compact { padding: 7px 10px; margin-bottom: 8px; font-size: 12.5px; }
+.now-top { display: flex; gap: 16px; align-items: center; }
+.now-cat .pill { font-size: 15px; font-weight: 600; padding: 5px 12px; margin: 4px 0 8px; }
+.script.big-script { font-size: 15.5px; font-weight: 500; line-height: 1.5; margin-top: 6px; background: #fff; }
+.now-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.now-grid > div { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--surface); display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.now-grid > div span { color: var(--text-2); font-size: 11.5px; }
+.now-commit { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.pill.own-pos { background: var(--positive-bg); border-color: #c9ead6; color: #166534; }
+.pill.own-neg { background: var(--warning-bg); border-color: #f6dfb6; color: #9a5b06; }
+@media (max-width: 860px) { .now-top { flex-direction: column; align-items: flex-start; } }

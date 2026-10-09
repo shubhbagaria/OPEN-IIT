@@ -1,0 +1,293 @@
+{
+ "setup": {
+  "train_ptps": 2572,
+  "val_ptps": 561,
+  "test_ptps": 563,
+  "snapshots": 17838,
+  "xgboost": "3.2.0",
+  "params_binary": {
+   "n_estimators": 2000,
+   "learning_rate": 0.02,
+   "tree_method": "hist",
+   "grow_policy": "lossguide",
+   "max_leaves": 15,
+   "max_depth": 0,
+   "min_child_weight": 6,
+   "subsample": 0.8,
+   "colsample_bytree": 0.7,
+   "reg_lambda": 5.0,
+   "enable_categorical": true,
+   "max_cat_to_onehot": 1,
+   "early_stopping_rounds": 100,
+   "random_state": 42,
+   "n_jobs": -1,
+   "verbosity": 0
+  },
+  "note": "LightGBM vs XGBoost, like for like."
+ },
+ "lightgbm": {
+  "keep_pre_call": {
+   "auc": 0.5673,
+   "auc_raw": 0.5774,
+   "ece_raw": 0.0344,
+   "ece_calibrated": 0.0323,
+   "brier": 0.2014,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "keep_in_call": {
+   "auc": 0.7633,
+   "auc_raw": 0.7661,
+   "ece_raw": 0.0514,
+   "ece_calibrated": 0.0368,
+   "brier": 0.1587,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "keep_post_call": {
+   "auc": 0.7645,
+   "auc_raw": 0.7694,
+   "ece_raw": 0.0332,
+   "ece_calibrated": 0.0346,
+   "brier": 0.16,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "category_cost_sensitive": {
+   "acc": 0.7016,
+   "macro_f1": 0.7479,
+   "weighted_f1": 0.6982
+  },
+  "category_argmax": {
+   "acc": 0.7602,
+   "macro_f1": 0.7909
+  },
+  "category_per_class_f1": {
+   "genuine_feasible": 0.576,
+   "genuine_infeasible": 0.633,
+   "escape": 0.708,
+   "third_party": 0.957,
+   "repeat_promiser": 0.734,
+   "agent_recorded_or_pushed": 0.88
+  },
+  "category_ovr_auc": 0.9437,
+  "category_ece": 0.064,
+  "category_vs_human_test": {
+   "n": 27,
+   "acc": 0.778,
+   "macro_f1": 0.77
+  },
+  "hardship_to_aggressive_argmax": 0.123,
+  "hardship_to_aggressive_costsens": 0.0164,
+  "streaming_curve": [
+   {
+    "call_fraction": "0-25%",
+    "n": 397,
+    "keep_auc": 0.6896,
+    "keep_ece": 0.07,
+    "category_acc": 0.3627,
+    "category_macro_f1": 0.2196
+   },
+   {
+    "call_fraction": "25-50%",
+    "n": 449,
+    "keep_auc": 0.7239,
+    "keep_ece": 0.0449,
+    "category_acc": 0.5902,
+    "category_macro_f1": 0.5999
+   },
+   {
+    "call_fraction": "50-75%",
+    "n": 474,
+    "keep_auc": 0.7759,
+    "keep_ece": 0.053,
+    "category_acc": 0.6667,
+    "category_macro_f1": 0.6804
+   },
+   {
+    "call_fraction": "75-99%",
+    "n": 328,
+    "keep_auc": 0.7761,
+    "keep_ece": 0.0566,
+    "category_acc": 0.6555,
+    "category_macro_f1": 0.5468
+   },
+   {
+    "call_fraction": "99-100%",
+    "n": 484,
+    "keep_auc": 0.7865,
+    "keep_ece": 0.0561,
+    "category_acc": 0.6963,
+    "category_macro_f1": 0.7206
+   }
+  ],
+  "heard_enough_trigger": {
+   "calls": 484,
+   "trigger_fired_share": 0.8781,
+   "median_turn_fraction_at_trigger": 0.667,
+   "median_seconds_before_call_end": 7.6,
+   "category_agreement_trigger_vs_final": 0.9576,
+   "keep_auc_at_trigger": 0.7684,
+   "category_acc_at_trigger": 0.72
+  },
+  "train_seconds_all_4_models": 10.8,
+  "trees_used": {
+   "pre_call": 136,
+   "in_call": 203,
+   "post_call": 157,
+   "category": 260
+  },
+  "single_row_latency_ms": {
+   "keep_in_call": {
+    "p50": 12.493,
+    "p95": 15.387
+   },
+   "category": {
+    "p50": 12.734,
+    "p95": 15.251
+   }
+  },
+  "crossfit_all_ptps": {
+   "keep_auc_pre_call": 0.5792,
+   "keep_auc_in_call": 0.7854,
+   "keep_auc_post_call": 0.7834,
+   "keep_ece_in_call": 0.0253,
+   "category_acc": 0.7286,
+   "category_macro_f1": 0.7664
+  },
+  "crossfit_seconds": 48.5
+ },
+ "xgboost": {
+  "keep_pre_call": {
+   "auc": 0.5634,
+   "auc_raw": 0.5733,
+   "ece_raw": 0.015,
+   "ece_calibrated": 0.0373,
+   "brier": 0.202,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "keep_in_call": {
+   "auc": 0.7613,
+   "auc_raw": 0.765,
+   "ece_raw": 0.052,
+   "ece_calibrated": 0.0423,
+   "brier": 0.1598,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "keep_post_call": {
+   "auc": 0.7643,
+   "auc_raw": 0.7675,
+   "ece_raw": 0.0369,
+   "ece_calibrated": 0.0365,
+   "brier": 0.1594,
+   "n": 563,
+   "base_rate": 0.2824
+  },
+  "category_cost_sensitive": {
+   "acc": 0.7176,
+   "macro_f1": 0.7572,
+   "weighted_f1": 0.7138
+  },
+  "category_argmax": {
+   "acc": 0.7496,
+   "macro_f1": 0.7815
+  },
+  "category_per_class_f1": {
+   "genuine_feasible": 0.614,
+   "genuine_infeasible": 0.658,
+   "escape": 0.688,
+   "third_party": 0.949,
+   "repeat_promiser": 0.744,
+   "agent_recorded_or_pushed": 0.891
+  },
+  "category_ovr_auc": 0.9446,
+  "category_ece": 0.0587,
+  "category_vs_human_test": {
+   "n": 27,
+   "acc": 0.778,
+   "macro_f1": 0.782
+  },
+  "hardship_to_aggressive_argmax": 0.123,
+  "hardship_to_aggressive_costsens": 0.0082,
+  "streaming_curve": [
+   {
+    "call_fraction": "0-25%",
+    "n": 397,
+    "keep_auc": 0.6934,
+    "keep_ece": 0.0529,
+    "category_acc": 0.3526,
+    "category_macro_f1": 0.2076
+   },
+   {
+    "call_fraction": "25-50%",
+    "n": 449,
+    "keep_auc": 0.7285,
+    "keep_ece": 0.0518,
+    "category_acc": 0.588,
+    "category_macro_f1": 0.5935
+   },
+   {
+    "call_fraction": "50-75%",
+    "n": 474,
+    "keep_auc": 0.7761,
+    "keep_ece": 0.0627,
+    "category_acc": 0.6857,
+    "category_macro_f1": 0.6824
+   },
+   {
+    "call_fraction": "75-99%",
+    "n": 328,
+    "keep_auc": 0.7789,
+    "keep_ece": 0.0652,
+    "category_acc": 0.6768,
+    "category_macro_f1": 0.5622
+   },
+   {
+    "call_fraction": "99-100%",
+    "n": 484,
+    "keep_auc": 0.7858,
+    "keep_ece": 0.0601,
+    "category_acc": 0.7169,
+    "category_macro_f1": 0.7387
+   }
+  ],
+  "heard_enough_trigger": {
+   "calls": 484,
+   "trigger_fired_share": 0.8905,
+   "median_turn_fraction_at_trigger": 0.667,
+   "median_seconds_before_call_end": 7.3,
+   "category_agreement_trigger_vs_final": 0.9513,
+   "keep_auc_at_trigger": 0.7694,
+   "category_acc_at_trigger": 0.7285
+  },
+  "train_seconds_all_4_models": 30.4,
+  "trees_used": {
+   "pre_call": 90,
+   "in_call": 217,
+   "post_call": 175,
+   "category": 453
+  },
+  "single_row_latency_ms": {
+   "keep_in_call": {
+    "p50": 20.06,
+    "p95": 22.861
+   },
+   "category": {
+    "p50": 21.895,
+    "p95": 24.214
+   }
+  },
+  "crossfit_all_ptps": {
+   "keep_auc_pre_call": 0.5747,
+   "keep_auc_in_call": 0.7826,
+   "keep_auc_post_call": 0.7825,
+   "keep_ece_in_call": 0.0253,
+   "category_acc": 0.7294,
+   "category_macro_f1": 0.766
+  },
+  "crossfit_seconds": 149.0
+ },
+ "runtime_s": 292.1
+}

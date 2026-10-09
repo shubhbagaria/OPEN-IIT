@@ -390,6 +390,9 @@ def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
         hardship_safeguard=bool(hardship or any("hardship" in r or "vulnerable" in r for r in rails)),
         privacy_safeguard=bool(privacy),
         heard_enough=None,
+        # same event definition as the offline "heard-enough" trigger (pipeline.streaming_eval)
+        commitment_event=bool(feats["n_c_commit"] + feats["n_a_record"] + feats["n_a_propose_date"]
+                              + feats["n_c_third_party"] > 0),
         commitment=commitment(turns),
         evidence=evidence(s["signals"], feats, ctx),
         drivers=drivers,

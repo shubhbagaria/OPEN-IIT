@@ -4,7 +4,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { liveCallsApi } from "../services/api";
 import { useApi } from "../hooks/useApi";
 import { qwenReady, useHealth } from "../components/Health";
-import { Async, CAT_LABEL, Card, CategoryPill, Meter, QUEUE_LABEL, Radial, StatusBadge, STATUS_LABEL, Unavailable, fmtInr, fmtPct } from "../components/ui";
+import { Async, CAT_LABEL, Card, CategoryPill, QUEUE_LABEL, Radial, StatusBadge, STATUS_LABEL, Unavailable, fmtInr, fmtPct } from "../components/ui";
 
 const SIG_TAG = {
   c_date: ["date stated", "pos"], c_amount: ["amount stated", "pos"], c_partial_offer: ["part payment", "pos"], c_firm: ["firm", "pos"],
@@ -87,6 +87,17 @@ export default function LiveCallDetail() {
     turn: x.turn + 1, credibility: x.credibility.p_keep, qwen_conf: x.qwen?.available ? x.qwen.confidence : null,
     tab_conf: x.tabular_category.confidence,
   }));
+
+  // "heard enough": first turn where the score is stable and a commitment / third-party event exists
+  const ordered = Object.values(assess).sort((x, y) => x.turn - y.turn);
+  let heardTurn = null;
+  for (let i = 1; i < ordered.length && heardTurn === null; i++) {
+    const p = ordered[i - 1], c = ordered[i];
+    const stable = Math.abs(p.credibility.p_keep - c.credibility.p_keep) < 0.05 && p.final_category === c.final_category &&
+      c.tabular_category.confidence >= 0.5;
+    const event = c.commitment_event;   // commitment / date proposal / PTP recorded / third party (backend)
+    if (stable && event) heardTurn = c.turn;
+  }
 
   const runFull = async () => {
     reset();
@@ -175,121 +186,138 @@ export default function LiveCallDetail() {
               </div>
             </Card>
 
-            <div className="grid">
-              {!a && <Card className="intel" title="Copilot intelligence"><div className="state small">Model output appears after the first utterance is scored.</div></Card>}
-              {a && (
-                <>
-                  {a.hardship_safeguard && <div className="banner warn" role="status"><strong>HARDSHIP SAFEGUARD ACTIVE</strong><span>Hardship signals present: no aggressive treatment; restructuring or smaller amount / post-salary date. {a.guardrails.filter((g) => g.includes("hardship") || g.includes("vulnerable")).join("; ")}</span></div>}
-                  {a.privacy_safeguard && <div className="banner info" role="status"><strong>PRIVACY SAFEGUARD ACTIVE</strong><span>A third party is on the line: do not disclose the debt; confirm with the borrower before parking.</span></div>}
-                  <Card className="intel" title="Copilot intelligence" sub={`After turn ${a.turn + 1} of ${a.n_turns}`}
-                    right={<StatusBadge s="MODEL OUTPUT" />}>
-                    <div className="row" style={{ alignItems: "flex-start", gap: 20 }}>
-                      <div style={{ textAlign: "center" }}>
-                        <Radial value={a.credibility.p_keep} label="credibility" />
-                        <div className="small muted" style={{ maxWidth: 130 }}>P(kept), LightGBM in-call, calibrated</div>
+            {!a && <Card className="intel" title="Copilot now"><div className="state small">The credibility score, promise type and suggested next line appear here after the first utterance is scored.</div></Card>}
+            {a && (
+              <Card className="intel now" title="Copilot now" sub={`After turn ${a.turn + 1} of ${a.n_turns}`}
+                right={<div className="row" style={{ gap: 6 }}>
+                  {heardTurn !== null && <span className="badge measured" title="Score stable and a commitment or third-party event has occurred">Heard enough · turn {heardTurn + 1}</span>}
+                  <StatusBadge s="MODEL OUTPUT" />
+                </div>}>
+                {a.hardship_safeguard && <div className="banner warn compact" role="status"><strong>HARDSHIP SAFEGUARD ACTIVE</strong><span>No aggressive treatment: restructuring, smaller amount or post-salary date.</span></div>}
+                {a.privacy_safeguard && <div className="banner info compact" role="status"><strong>PRIVACY SAFEGUARD ACTIVE</strong><span>Third party on the line: do not disclose the debt.</span></div>}
+
+                <div className="now-top">
+                  <div style={{ textAlign: "center" }}>
+                    <Radial value={a.credibility.p_keep} label="credibility" size={96} />
+                    <div className={`small risk-${a.credibility.risk}`} style={{ fontWeight: 600, textTransform: "capitalize" }}>{a.credibility.risk} risk</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="small muted">Promise type (decision, after guardrails)</div>
+                    <div className="now-cat"><CategoryPill c={a.final_category} /></div>
+                    <div className="small" style={{ display: "grid", gap: 4 }}>
+                      <div className="row" style={{ gap: 6 }}><span className="muted">LightGBM</span><CategoryPill c={a.tabular_category.category} conf={a.tabular_category.confidence} /></div>
+                      <div className="row" style={{ gap: 6 }}><span className="muted">Qwen SLM</span>
+                        {a.qwen.available
+                          ? <><CategoryPill c={a.qwen.category} conf={a.qwen.confidence} /><span className="muted">{a.qwen.category === a.tabular_category.category ? "agrees" : "disagrees"}</span></>
+                          : <span className="muted">{a.qwen.status === "skipped" ? "not run" : "unavailable"}</span>}
                       </div>
-                      <div style={{ flex: 1, minWidth: 220 }}>
-                        <div className="small muted">Decision category (after guardrails)</div>
-                        <div style={{ margin: "4px 0 10px" }}><CategoryPill c={a.final_category} /></div>
-                        <dl className="kv">
-                          <dt>Tabular model</dt><dd><CategoryPill c={a.tabular_category.category} conf={a.tabular_category.confidence} /></dd>
-                          <dt>Qwen SLM</dt>
-                          <dd>{a.qwen.available ? (
-                            <span className="row" style={{ gap: 6 }}><CategoryPill c={a.qwen.category} conf={a.qwen.confidence} />
-                              <span className="small muted">{a.qwen.category === a.tabular_category.category ? "agrees" : "disagrees"} · {a.qwen.latency_ms} ms</span></span>
-                          ) : <span className="muted small">{a.qwen.status === "skipped" ? "Not run for this step" : `Unavailable: ${a.qwen.reason}`}</span>}</dd>
-                          <dt>Risk</dt><dd className={`risk-${a.credibility.risk}`} style={{ textTransform: "capitalize" }}>{a.credibility.risk}</dd>
-                          <dt>Latency</dt><dd className="num">tabular {a.latency_ms.tabular} ms{a.latency_ms.qwen ? ` · Qwen ${a.latency_ms.qwen} ms` : ""} <StatusBadge s="MEASURED" /></dd>
-                        </dl>
-                      </div>
+                      <div className="muted num">P(kept) from LightGBM in-call model · tabular {a.latency_ms.tabular} ms{a.latency_ms.qwen ? ` · Qwen ${a.latency_ms.qwen} ms` : ""}</div>
                     </div>
-                    {timeline.length > 1 && (
-                      <div className="mt">
-                        <div className="small muted">Score timeline</div>
-                        <ResponsiveContainer width="100%" height={150}>
-                          <LineChart data={timeline} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
-                            <CartesianGrid vertical={false} />
-                            <XAxis dataKey="turn" />
-                            <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}`} />
-                            <Tooltip formatter={(v, nme) => [v === null ? "N/A" : fmtPct(v, 0), nme]} labelFormatter={(t) => `Turn ${t}`} />
-                            <Legend />
-                            <Line name="Credibility" dataKey="credibility" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
-                            <Line name="Qwen category conf." dataKey="qwen_conf" stroke="#93c5fd" strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </Card>
+                  </div>
+                </div>
 
-                  <Card title="Commitment" sub="Who said the date and amount first (read from the transcript)">
-                    <dl className="kv">
-                      <dt>Ownership</dt><dd><span className={`pill`}>{OWN[a.commitment.ownership][0]}</span></dd>
-                      <dt>Date</dt><dd>{a.commitment.latest.date ? `${a.commitment.latest.date.value} (first by ${a.commitment.first.date.by}, turn ${a.commitment.first.date.turn + 1})` : "Not stated yet"}</dd>
-                      <dt>Amount</dt><dd className="num">{a.commitment.latest.amount ? `${fmtInr(a.commitment.latest.amount.value)} (first by ${a.commitment.first.amount.by}, turn ${a.commitment.first.amount.turn + 1})` : "Not stated yet"}</dd>
-                      <dt>Borrower confirmation</dt><dd>{a.commitment.borrower_explicit_confirmation ? "Explicit (firm language or part-payment offer)" : "None explicit"}</dd>
-                    </dl>
-                  </Card>
+                <div className="between" style={{ marginTop: 12 }}>
+                  <span className="small muted">Say next ({a.treatment.utterance_kind})</span>
+                  <span className="small">Policy check: {a.treatment.policy_check === "pass" ? <b style={{ color: "#15803d" }}>pass</b> : <b style={{ color: "#dc2626" }}>blocked: {a.treatment.compliance_issues.join(", ")}</b>}</span>
+                </div>
+                <div className="script big-script">{a.treatment.next_utterance}</div>
 
-                  <Card title="Evidence" sub="Signals detected so far; quotes are the first utterance that triggered each one">
-                    {a.evidence.length === 0 ? <div className="small muted">No signals yet.</div> : a.evidence.map((e) => (
-                      <div key={e.signal} className="ev">
-                        <span className={`ic ${{ "+": "pos", "-": "neg", "!": "alert", "~": "neu" }[e.polarity]}`}>{e.polarity === "~" ? "•" : e.polarity}</span>
-                        <div>
-                          <div>{e.text}{e.count > 1 ? <span className="muted"> ×{e.count}</span> : ""}</div>
-                          {e.quote && <div className="q">turn {e.first_turn + 1}: "{e.quote}"</div>}
-                        </div>
-                      </div>
+                <div className="now-grid">
+                  <div><span>Action</span><b>{QUEUE_LABEL[a.treatment.queue] || a.treatment.queue}</b></div>
+                  <div><span>Parking</span><b>{a.treatment.parking_days} day(s)</b></div>
+                  <div><span>Reminders</span><b>{a.treatment.reminders.join(", ") || "None"}</b></div>
+                  <div><span>Follow-up</span><b>{a.treatment.follow_up}</b></div>
+                </div>
+
+                <div className="now-commit">
+                  <span className={`pill own-${OWN[a.commitment.ownership][1]}`}>{OWN[a.commitment.ownership][0]}</span>
+                  <span><span className="muted">Date</span> {a.commitment.latest.date ? `${a.commitment.latest.date.value} (by ${a.commitment.first.date.by})` : "not stated"}</span>
+                  <span className="num"><span className="muted">Amount</span> {a.commitment.latest.amount ? `${fmtInr(a.commitment.latest.amount.value)} (by ${a.commitment.first.amount.by})` : "not stated"}</span>
+                  <span><span className="muted">Confirmation</span> {a.commitment.borrower_explicit_confirmation ? "explicit" : "none"}</span>
+                </div>
+
+                {a.evidence.length > 0 && (
+                  <div className="tags" style={{ marginTop: 10 }}>
+                    {a.evidence.map((e) => (
+                      <span key={e.signal} className={`tag ${{ "+": "pos", "-": "neg", "!": "alert", "~": "" }[e.polarity]}`} title={e.quote ? `turn ${e.first_turn + 1}: "${e.quote}"` : undefined}>
+                        {e.text}{e.count > 1 ? ` ×${e.count}` : ""}
+                      </span>
                     ))}
-                    <div className="small muted mt">Top score drivers (SHAP, log-odds):</div>
-                    {a.drivers.map((d) => (
-                      <div key={d.feature} className="between small" style={{ padding: "3px 0" }}>
-                        <span>{d.label}</span><span className="num" style={{ color: d.contribution > 0 ? "#15803d" : "#b45309" }}>{d.contribution > 0 ? "+" : ""}{d.contribution.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </Card>
+                  </div>
+                )}
+                {a.guardrails.length > 0 && <div className="small muted" style={{ marginTop: 8 }}>Guardrails applied: {a.guardrails.join("; ")}</div>}
+              </Card>
+            )}
+          </div>
 
-                  <Card title="Treatment recommendation" sub="From ptp_copilot.policy: guardrails, approved script, compliance filter, parking engine" right={<StatusBadge s="MODEL OUTPUT" />}>
-                    <div className="small muted">Suggested next line ({a.treatment.utterance_kind})</div>
-                    <div className="script mt" style={{ marginTop: 6 }}>{a.treatment.next_utterance}</div>
-                    <div className="row small" style={{ marginTop: 6 }}>
-                      Policy check: {a.treatment.policy_check === "pass" ? <span style={{ color: "#15803d", fontWeight: 600 }}>pass</span> : <span style={{ color: "#dc2626", fontWeight: 600 }}>blocked: {a.treatment.compliance_issues.join(", ")}</span>}
-                    </div>
-                    <dl className="kv mt">
-                      <dt>Action</dt><dd>{QUEUE_LABEL[a.treatment.queue] || a.treatment.queue}</dd>
-                      <dt>Parking</dt><dd>{a.treatment.parking_days} day(s)</dd>
-                      <dt>Reminders</dt><dd>{a.treatment.reminders.join(", ") || "None"}</dd>
-                      <dt>Follow-up</dt><dd>{a.treatment.follow_up}</dd>
-                      {a.guardrails.length > 0 && <><dt>Guardrails</dt><dd>{a.guardrails.join("; ")}</dd></>}
-                    </dl>
-                    <div className="row mt">
-                      <button className="btn sm" onClick={runGen} disabled={!qwenOk || pos === 0 || gen?.loading}>Generate raw Qwen draft</button>
-                      {!qwenOk && <span className="small muted">Qwen SLM unavailable</span>}
-                    </div>
-                    {gen?.loading && <div className="small muted mt">Generating with Qwen…</div>}
-                    {gen?.error && <div className="banner crit mt">{gen.error.message}</div>}
-                    {gen && gen.available && (
-                      <div className="banner mt" style={{ display: "block" }}>
-                        <div className="between"><strong className="small">Raw Qwen output (not shown to agent)</strong><span className="small num">{gen.tokens} tokens · {gen.latency_ms} ms <StatusBadge s="MEASURED" /></span></div>
-                        <div className="mono" style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{gen.raw}</div>
-                        <div className="small muted" style={{ marginTop: 6 }}>{gen.note} Raw-text compliance: {gen.compliance_issues_raw?.length ? gen.compliance_issues_raw.join(", ") : "no issues"}.</div>
-                      </div>
-                    )}
-                    {gen && gen.available === false && <div className="mt"><Unavailable title="Qwen SLM unavailable">{gen.reason}</Unavailable></div>}
-                  </Card>
+          {a && (
+            <div className="grid g2 mt">
+              <Card title="Score timeline" sub="Credibility and Qwen confidence after every scored utterance" right={<StatusBadge s="MODEL OUTPUT" />}>
+                {timeline.length > 1 ? (
+                  <ResponsiveContainer width="100%" height={210}>
+                    <LineChart data={timeline} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="turn" />
+                      <YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}`} />
+                      <Tooltip formatter={(v, nme) => [v === null ? "N/A" : fmtPct(v, 0), nme]} labelFormatter={(t) => `Turn ${t}`} />
+                      <Legend />
+                      <Line name="Credibility" dataKey="credibility" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+                      <Line name="Qwen category conf." dataKey="qwen_conf" stroke="#93c5fd" strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <div className="small muted">The timeline appears after two scored utterances.</div>}
+              </Card>
 
-                  {a.is_final && (
-                    <Card title="After the call: ground truth" sub={a.ground_truth.note} right={<StatusBadge s="ACTUAL" />}>
-                      <dl className="kv">
-                        <dt>Ground-truth category</dt><dd><CategoryPill c={a.ground_truth.category} /></dd>
-                        <dt>Payment outcome</dt><dd>{STATUS_LABEL[a.ground_truth.outcome] || a.ground_truth.outcome}</dd>
-                        {a.audit_id && <><dt>Audit record</dt><dd><Link to={`/audit/${a.audit_id}`}>{a.audit_id}</Link></dd></>}
-                      </dl>
-                    </Card>
-                  )}
-                </>
+              <Card title="Evidence detail" sub="Each signal with the first utterance that triggered it">
+                {a.evidence.length === 0 ? <div className="small muted">No signals yet.</div> : a.evidence.map((e) => (
+                  <div key={e.signal} className="ev">
+                    <span className={`ic ${{ "+": "pos", "-": "neg", "!": "alert", "~": "neu" }[e.polarity]}`}>{e.polarity === "~" ? "•" : e.polarity}</span>
+                    <div>
+                      <div>{e.text}{e.count > 1 ? <span className="muted"> ×{e.count}</span> : ""}</div>
+                      {e.quote && <div className="q">turn {e.first_turn + 1}: "{e.quote}"</div>}
+                    </div>
+                  </div>
+                ))}
+                <div className="small muted mt">Top score drivers (SHAP, log-odds):</div>
+                {a.drivers.map((d) => (
+                  <div key={d.feature} className="between small" style={{ padding: "3px 0" }}>
+                    <span>{d.label}</span><span className="num" style={{ color: d.contribution > 0 ? "#15803d" : "#b45309" }}>{d.contribution > 0 ? "+" : ""}{d.contribution.toFixed(2)}</span>
+                  </div>
+                ))}
+              </Card>
+
+              <Card title="Qwen raw draft" sub="Free-generated text from the fine-tuned Qwen SLM, for transparency only; the agent always sees the approved script above">
+                <div className="row">
+                  <button className="btn sm" onClick={runGen} disabled={!qwenOk || pos === 0 || gen?.loading}>Generate raw Qwen draft</button>
+                  {!qwenOk && <span className="small muted">Qwen SLM unavailable</span>}
+                </div>
+                {gen?.loading && <div className="small muted mt">Generating with Qwen…</div>}
+                {gen?.error && <div className="banner crit mt">{gen.error.message}</div>}
+                {gen && gen.available && (
+                  <div className="banner mt" style={{ display: "block" }}>
+                    <div className="between"><strong className="small">Raw Qwen output (not shown to agent)</strong><span className="small num">{gen.tokens} tokens · {gen.latency_ms} ms <StatusBadge s="MEASURED" /></span></div>
+                    <div className="mono" style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{gen.raw}</div>
+                    <div className="small muted" style={{ marginTop: 6 }}>{gen.note} Raw-text compliance: {gen.compliance_issues_raw?.length ? gen.compliance_issues_raw.join(", ") : "no issues"}.</div>
+                  </div>
+                )}
+                {gen && gen.available === false && <div className="mt"><Unavailable title="Qwen SLM unavailable">{gen.reason}</Unavailable></div>}
+              </Card>
+
+              {a.is_final ? (
+                <Card title="After the call: ground truth" sub={a.ground_truth.note} right={<StatusBadge s="ACTUAL" />}>
+                  <dl className="kv">
+                    <dt>Ground-truth category</dt><dd><CategoryPill c={a.ground_truth.category} /></dd>
+                    <dt>Payment outcome</dt><dd>{STATUS_LABEL[a.ground_truth.outcome] || a.ground_truth.outcome}</dd>
+                    {a.audit_id && <><dt>Audit record</dt><dd><Link to={`/audit/${a.audit_id}`}>{a.audit_id}</Link></dd></>}
+                  </dl>
+                </Card>
+              ) : (
+                <Card title="After the call: ground truth" right={<StatusBadge s="ACTUAL" />}>
+                  <div className="small muted">Revealed only after the last utterance, so it cannot influence the live prediction.</div>
+                </Card>
               )}
             </div>
-          </div>
+          )}
         </>
       )}
     </Async>
