@@ -224,3 +224,15 @@ table.t tbody tr.sel { background: var(--light-blue); }
 .pill.own-pos { background: var(--positive-bg); border-color: #c9ead6; color: #166534; }
 .pill.own-neg { background: var(--warning-bg); border-color: #f6dfb6; color: #9a5b06; }
 @media (max-width: 860px) { .now-top { flex-direction: column; align-items: flex-start; } }
+
+/* ---------------- live call: what to say next */
+.ask-box { border: 1px solid var(--soft-blue); background: #ffffff; border-radius: 10px; padding: 12px 14px; }
+.ask-title { font-weight: 700; color: var(--deep); font-size: 15px; }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ask-chip { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); min-width: 150px; }
+.ask-chip span { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-2); }
+.ask-chip b { font-size: 14.5px; color: var(--text); }
+.ask-chip.pay { background: var(--light-blue); border-color: #bcd8fb; }
+.ask-chip.pay span { color: var(--deep); }
+.ask-chip.warn { background: var(--warning-bg); border-color: #f6dfb6; }
+.ask-chip.warn span { color: #9a5b06; }

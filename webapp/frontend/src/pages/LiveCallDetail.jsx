@@ -196,7 +196,23 @@ export default function LiveCallDetail() {
                 {a.hardship_safeguard && <div className="banner warn compact" role="status"><strong>HARDSHIP SAFEGUARD ACTIVE</strong><span>No aggressive treatment: restructuring, smaller amount or post-salary date.</span></div>}
                 {a.privacy_safeguard && <div className="banner info compact" role="status"><strong>PRIVACY SAFEGUARD ACTIVE</strong><span>Third party on the line: do not disclose the debt.</span></div>}
 
-                <div className="now-top">
+                <div className="ask-box">
+                  <div className="between">
+                    <span className="ask-title">Say next <span className="muted small">· {a.treatment.utterance_kind}</span></span>
+                    <span className="small">Policy check: {a.treatment.policy_check === "pass" ? <b style={{ color: "#15803d" }}>pass</b> : <b style={{ color: "#dc2626" }}>blocked: {a.treatment.compliance_issues.join(", ")}</b>}</span>
+                  </div>
+                  {a.treatment.ask?.length > 0 && (
+                    <div className="ask-chips">
+                      {a.treatment.ask.map((k, i) => (
+                        <div key={i} className={`ask-chip ${k.tone || ""}`}><span>{k.tag}</span><b>{k.text}</b></div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="small muted" style={{ marginTop: 10 }}>Say it like this</div>
+                  <div className="script big-script">{a.treatment.next_utterance}</div>
+                </div>
+
+                <div className="now-top" style={{ marginTop: 14 }}>
                   <div style={{ textAlign: "center" }}>
                     <Radial value={a.credibility.p_keep} label="credibility" size={96} />
                     <div className={`small risk-${a.credibility.risk}`} style={{ fontWeight: 600, textTransform: "capitalize" }}>{a.credibility.risk} risk</div>
@@ -216,11 +232,6 @@ export default function LiveCallDetail() {
                   </div>
                 </div>
 
-                <div className="between" style={{ marginTop: 12 }}>
-                  <span className="small muted">Say next ({a.treatment.utterance_kind})</span>
-                  <span className="small">Policy check: {a.treatment.policy_check === "pass" ? <b style={{ color: "#15803d" }}>pass</b> : <b style={{ color: "#dc2626" }}>blocked: {a.treatment.compliance_issues.join(", ")}</b>}</span>
-                </div>
-                <div className="script big-script">{a.treatment.next_utterance}</div>
 
                 <div className="now-grid">
                   <div><span>Action</span><b>{QUEUE_LABEL[a.treatment.queue] || a.treatment.queue}</b></div>

@@ -339,6 +339,44 @@ EXTRA_LABELS = {
 }
 
 
+def ask_points(cat, utt_kind, ctx, feats):
+    """Key asks for the agent, as short chips. Uses the same numbers as policy.guidance
+    (token amount, promised date, salary day + 2), so chips and the full sentence always agree."""
+    if utt_kind.startswith("coaching"):
+        return [dict(tag="ASK", text="Borrower's own payment date", tone="pay"),
+                dict(tag="AVOID", text="Proposing a date yourself", tone="warn")]
+    amt = float(ctx["promised_amount"])
+    tok = P.token_amount(amt)
+    rest = max(amt - tok, 0)
+    pdate = pd.Timestamp(ctx["promised_date"]).strftime("%d %b")
+    sd = feats.get("salary_day_said")
+    sd = sd if sd is not None and not (isinstance(sd, float) and np.isnan(sd)) else ctx.get("salary_credit_day")
+    alt = P.post_salary_day(sd)
+    alt_txt = f"{P._ordinal(alt)} (salary + 2 days)" if alt else "2 days after salary"
+    inr = P._inr
+    return {
+        "genuine_feasible": [dict(tag="CONFIRM", text=f"₹{inr(amt)} by {pdate}", tone="pay"),
+                             dict(tag="SEND", text="Payment link on WhatsApp now"),
+                             dict(tag="REMIND", text="1 day before the due date")],
+        "genuine_infeasible": [dict(tag="OPTION A", text=f"Move date to {alt_txt}", tone="pay"),
+                               dict(tag="OPTION B", text=f"₹{inr(tok)} today, rest later", tone="pay"),
+                               dict(tag="OFFER", text="Restructuring check"),
+                               dict(tag="AVOID", text="Pressure or escalation talk", tone="warn")],
+        "escape": [dict(tag="PAY NOW", text=f"₹{inr(tok)} via payment link", tone="pay"),
+                   dict(tag="REST", text=f"₹{inr(rest)} by {pdate}", tone="pay"),
+                   dict(tag="FOLLOW UP", text="In 24–48 hours")],
+        "third_party": [dict(tag="DO NOT", text="Mention the loan, amount or dues", tone="warn"),
+                        dict(tag="ASK", text="Best time to reach the borrower", tone="pay"),
+                        dict(tag="NEXT", text="Call the borrower directly within 24 h")],
+        "repeat_promiser": [dict(tag="PAY NOW", text=f"₹{inr(tok)} part-payment today", tone="pay"),
+                            dict(tag="REST", text=f"₹{inr(rest)} by {pdate}", tone="pay"),
+                            dict(tag="STATE", text="Account may go to senior recovery review")],
+        "agent_recorded_or_pushed": [dict(tag="CONFIRM", text=f"Borrower's own yes to ₹{inr(amt)} by {pdate}", tone="pay"),
+                                     dict(tag="IF NOT", text="Ask the date that works for them"),
+                                     dict(tag="FLAG", text="Integrity review")],
+    }.get(cat, [])
+
+
 def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
     b = store.base_by_ptp.loc[ptp_id]
     ctx = b.to_dict()
@@ -397,6 +435,7 @@ def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
         evidence=evidence(s["signals"], feats, ctx),
         drivers=drivers,
         treatment=dict(next_utterance=utt, utterance_kind=utt_kind, compliance_issues=issues,
+                       ask=ask_points(final_cat, utt_kind, ctx, rail_feats),
                        parking_days=park, reminders=rem, queue=queue, follow_up=fu,
                        policy_check="pass" if not issues else "blocked"),
         latency_ms=dict(tabular=round(s["latency_ms"], 1), qwen=q.get("latency_ms")),
