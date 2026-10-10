@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { liveCallsApi } from "../services/api";
 import { useApi } from "../hooks/useApi";
-import { qwenReady, useHealth } from "../components/Health";
+import { llmLabel, llmReady, useHealth } from "../components/Health";
 import { Async, CAT_LABEL, Card, CategoryPill, QUEUE_LABEL, Radial, StatusBadge, STATUS_LABEL, Unavailable, fmtInr, fmtPct } from "../components/ui";
 
 const SIG_TAG = {
@@ -31,7 +31,12 @@ export default function LiveCallDetail() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [speed, setSpeed] = useState(2);
-  const [useQwen, setUseQwen] = useState(true);
+  const [useLlm, setUseLlm] = useState(true);
+  const [llmRes, setLlmRes] = useState({}); // turn -> async LLM result
+  const [llmWorking, setLlmWorking] = useState(false);
+  const llmBusy = useRef(false);
+  const llmPending = useRef(null);
+  const llmFn = useRef(null);
   const [gen, setGen] = useState(null);
   const timer = useRef(null);
   const ctrl = useRef(null);
@@ -39,21 +44,38 @@ export default function LiveCallDetail() {
   statusRef.current = status;
   const tx = meta.data?.transcript || [];
   const n = tx.length;
-  const qwenOk = qwenReady(health);
+  const llmOk = llmReady(health);
+  const LLM = llmLabel(health);
 
   const reset = useCallback(() => {
     clearTimeout(timer.current);
     ctrl.current?.abort();
     setStatus("idle"); setPos(0); setAssess({}); setErr(null); setGen(null); setBusy(false);
+    setLlmRes({}); llmPending.current = null;
   }, []);
   useEffect(() => reset, [callId, reset]);
+
+  llmFn.current = async (turn) => {
+    if (llmBusy.current) { llmPending.current = turn; return; }
+    llmBusy.current = true; setLlmWorking(true);
+    try { const r = await liveCallsApi.llm(callId, { turn }); setLlmRes((m) => ({ ...m, [turn]: r })); }
+    catch { /* shown as unavailable for that turn */ }
+    finally {
+      llmBusy.current = false; setLlmWorking(false);
+      const p = llmPending.current; llmPending.current = null;
+      if (p !== null && p > turn) llmFn.current(p);
+    }
+  };
 
   const score = useCallback(async (turn) => {
     ctrl.current = new AbortController();
     setBusy(true);
     try {
-      const a = await liveCallsApi.step(callId, { turn, qwen: useQwen && qwenOk }, { signal: ctrl.current.signal });
+      const last = turn === n - 1;   // final turn: include the LLM in the (audited) assessment
+      const a = await liveCallsApi.step(callId, { turn, llm: last && useLlm && llmOk }, { signal: ctrl.current.signal });
       setAssess((m) => ({ ...m, [turn]: a }));
+      if (last && a.llm?.available) setLlmRes((m) => ({ ...m, [turn]: { ...a.llm, turn } }));
+      else if (useLlm && llmOk) llmFn.current(turn);
       setErr(null);
       return a;
     } catch (e) {
@@ -62,7 +84,7 @@ export default function LiveCallDetail() {
     } finally {
       setBusy(false);
     }
-  }, [callId, useQwen, qwenOk]);
+  }, [callId, useLlm, llmOk, n]);
 
   // simulation loop: reveal next turn after its real recorded gap / speed, then score the prefix
   useEffect(() => {
@@ -84,7 +106,7 @@ export default function LiveCallDetail() {
   const lastTurn = Math.max(-1, ...Object.keys(assess).map(Number));
   const a = lastTurn >= 0 ? assess[lastTurn] : null;
   const timeline = Object.values(assess).sort((x, y) => x.turn - y.turn).map((x) => ({
-    turn: x.turn + 1, credibility: x.credibility.p_keep, qwen_conf: x.qwen?.available ? x.qwen.confidence : null,
+    turn: x.turn + 1, credibility: x.credibility.p_keep, llm_conf: llmRes[x.turn]?.available ? llmRes[x.turn].confidence : null,
     tab_conf: x.tabular_category.confidence,
   }));
 
@@ -99,12 +121,17 @@ export default function LiveCallDetail() {
     if (stable && event) heardTurn = c.turn;
   }
 
+  // latest LLM opinion available at or before the current turn
+  const llmTurns = Object.keys(llmRes).map(Number).filter((t) => a && t <= a.turn && llmRes[t]?.available);
+  const L = llmTurns.length ? llmRes[Math.max(...llmTurns)] : (a?.llm?.available ? { ...a.llm, turn: a.turn } : null);
+
   const runFull = async () => {
     reset();
     setBusy(true);
     try {
       const r = await liveCallsApi.predict(callId);
       setPos(n); setAssess({ [r.turn]: r }); setStatus("done");
+      if (r.llm?.available) setLlmRes({ [r.turn]: { ...r.llm, turn: r.turn } });
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   const runGen = async () => {
@@ -161,8 +188,8 @@ export default function LiveCallDetail() {
               </div>
               <div className="progress" aria-label="Transcript position"><div style={{ width: `${(pos / n) * 100}%` }} /></div>
               <span className="small muted num">Turn {pos}/{n}</span>
-              <label className="row small" style={{ gap: 6 }} title={qwenOk ? "Also score each prefix with the fine-tuned Qwen SLM" : "Qwen SLM is not ready"}>
-                <input type="checkbox" checked={useQwen && qwenOk} disabled={!qwenOk || status === "running"} onChange={(e) => setUseQwen(e.target.checked)} /> Qwen SLM
+              <label className="row small" style={{ gap: 6 }} title={llmOk ? `Also ask ${LLM} for its view (asynchronous)` : `${LLM} is not ready`}>
+                <input type="checkbox" checked={useLlm && llmOk} disabled={!llmOk || status === "running"} onChange={(e) => setUseLlm(e.target.checked)} /> {LLM}
               </label>
               <button className="btn soft" onClick={runFull} disabled={busy || status === "running"}>Score full call</button>
               <span className="small muted">{busy ? "Scoring prefix…" : status === "running" ? "Waiting for next utterance" : ""}</span>
@@ -222,12 +249,14 @@ export default function LiveCallDetail() {
                     <div className="now-cat"><CategoryPill c={a.final_category} /></div>
                     <div className="small" style={{ display: "grid", gap: 4 }}>
                       <div className="row" style={{ gap: 6 }}><span className="muted">LightGBM</span><CategoryPill c={a.tabular_category.category} conf={a.tabular_category.confidence} /></div>
-                      <div className="row" style={{ gap: 6 }}><span className="muted">Qwen SLM</span>
-                        {a.qwen.available
-                          ? <><CategoryPill c={a.qwen.category} conf={a.qwen.confidence} /><span className="muted">{a.qwen.category === a.tabular_category.category ? "agrees" : "disagrees"}</span></>
-                          : <span className="muted">{a.qwen.status === "skipped" ? "not run" : "unavailable"}</span>}
+                      <div className="row" style={{ gap: 6 }}><span className="muted">{LLM}</span>
+                        {L
+                          ? <><CategoryPill c={L.category} conf={L.confidence} /><span className="muted">{L.category === a.tabular_category.category ? "agrees" : "disagrees"}{L.turn < a.turn ? ` · as of turn ${L.turn + 1}` : ""}</span></>
+                          : <span className="muted">{!llmOk ? "unavailable" : !useLlm ? "off" : "waiting…"}</span>}
+                        {llmWorking && <span className="muted small">analysing…</span>}
                       </div>
-                      <div className="muted num">P(kept) from LightGBM in-call model · tabular {a.latency_ms.tabular} ms{a.latency_ms.qwen ? ` · Qwen ${a.latency_ms.qwen} ms` : ""}</div>
+                      {L?.reasons?.length > 0 && <div className="muted" style={{ fontStyle: "italic" }}>{LLM}: {L.reasons[0]}</div>}
+                      <div className="muted num">P(kept) from LightGBM in-call model · tabular {a.latency_ms.tabular} ms{L?.latency_ms ? ` · ${LLM} ${L.latency_ms} ms` : ""}</div>
                     </div>
                   </div>
                 </div>
@@ -263,7 +292,7 @@ export default function LiveCallDetail() {
 
           {a && (
             <div className="grid g2 mt">
-              <Card title="Score timeline" sub="Credibility and Qwen confidence after every scored utterance" right={<StatusBadge s="MODEL OUTPUT" />}>
+              <Card title="Score timeline" sub={`Credibility after every utterance; ${LLM} confidence where it has answered`} right={<StatusBadge s="MODEL OUTPUT" />}>
                 {timeline.length > 1 ? (
                   <ResponsiveContainer width="100%" height={210}>
                     <LineChart data={timeline} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
@@ -273,7 +302,7 @@ export default function LiveCallDetail() {
                       <Tooltip formatter={(v, nme) => [v === null ? "N/A" : fmtPct(v, 0), nme]} labelFormatter={(t) => `Turn ${t}`} />
                       <Legend />
                       <Line name="Credibility" dataKey="credibility" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
-                      <Line name="Qwen category conf." dataKey="qwen_conf" stroke="#93c5fd" strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
+                      <Line name={`${LLM} category conf.`} dataKey="llm_conf" stroke="#93c5fd" strokeWidth={2} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : <div className="small muted">The timeline appears after two scored utterances.</div>}
@@ -297,21 +326,21 @@ export default function LiveCallDetail() {
                 ))}
               </Card>
 
-              <Card title="Qwen raw draft" sub="Free-generated text from the fine-tuned Qwen SLM, for transparency only; the agent always sees the approved script above">
+              <Card title={`${LLM} raw draft`} sub={`Free-generated text from ${LLM}, for transparency only; the agent always sees the approved script above`}>
                 <div className="row">
-                  <button className="btn sm" onClick={runGen} disabled={!qwenOk || pos === 0 || gen?.loading}>Generate raw Qwen draft</button>
-                  {!qwenOk && <span className="small muted">Qwen SLM unavailable</span>}
+                  <button className="btn sm" onClick={runGen} disabled={!llmOk || pos === 0 || gen?.loading}>Generate raw {LLM} draft</button>
+                  {!llmOk && <span className="small muted">{LLM} unavailable</span>}
                 </div>
-                {gen?.loading && <div className="small muted mt">Generating with Qwen…</div>}
+                {gen?.loading && <div className="small muted mt">Generating with {LLM}…</div>}
                 {gen?.error && <div className="banner crit mt">{gen.error.message}</div>}
                 {gen && gen.available && (
                   <div className="banner mt" style={{ display: "block" }}>
-                    <div className="between"><strong className="small">Raw Qwen output (not shown to agent)</strong><span className="small num">{gen.tokens} tokens · {gen.latency_ms} ms <StatusBadge s="MEASURED" /></span></div>
+                    <div className="between"><strong className="small">Raw {LLM} output (not shown to agent)</strong><span className="small num">{gen.tokens ? `${gen.tokens} tokens · ` : ""}{gen.latency_ms} ms <StatusBadge s="MEASURED" /></span></div>
                     <div className="mono" style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{gen.raw}</div>
                     <div className="small muted" style={{ marginTop: 6 }}>{gen.note} Raw-text compliance: {gen.compliance_issues_raw?.length ? gen.compliance_issues_raw.join(", ") : "no issues"}.</div>
                   </div>
                 )}
-                {gen && gen.available === false && <div className="mt"><Unavailable title="Qwen SLM unavailable">{gen.reason}</Unavailable></div>}
+                {gen && gen.available === false && <div className="mt"><Unavailable title={`${LLM} unavailable`}>{gen.reason}</Unavailable></div>}
               </Card>
 
               {a.is_final ? (

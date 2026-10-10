@@ -1,0 +1,111 @@
+{
+ "status": "PARTIAL: 124 of 484 held-out test calls (run stopped early to save quota)",
+ "model": "gemini-3.5-flash-lite",
+ "temperature": 2.41,
+ "n_validation": 100,
+ "final": {
+  "n": 124,
+  "acc": 0.4274,
+  "macro_f1": 0.4739,
+  "weighted_f1": 0.3974,
+  "ece_top1_calibrated": 0.0478,
+  "ece_top1_uncalibrated": 0.2084,
+  "hardship_to_aggressive_rate": 0.1875,
+  "per_class_f1": {
+   "genuine_feasible": 0.235,
+   "genuine_infeasible": 0.561,
+   "escape": 0.359,
+   "third_party": 1.0,
+   "repeat_promiser": 0.214,
+   "agent_recorded_or_pushed": 0.474
+  },
+  "confusion": [
+   [
+    6,
+    23,
+    2,
+    0,
+    10,
+    3
+   ],
+   [
+    1,
+    23,
+    3,
+    0,
+    3,
+    2
+   ],
+   [
+    0,
+    1,
+    7,
+    0,
+    6,
+    13
+   ],
+   [
+    0,
+    0,
+    0,
+    5,
+    0,
+    0
+   ],
+   [
+    0,
+    2,
+    0,
+    0,
+    3,
+    0
+   ],
+   [
+    0,
+    1,
+    0,
+    0,
+    1,
+    9
+   ]
+  ],
+  "latency_ms": {
+   "p50": 1754,
+   "p95": 2602,
+   "mean": 1829
+  },
+  "mean_prompt_tokens": 1789,
+  "mean_output_tokens": 171
+ },
+ "same_calls_lightgbm": {
+  "n": 124,
+  "acc": 0.6935,
+  "macro_f1": 0.678,
+  "hardship_to_aggressive": 0.0312,
+  "ece": 0.0588
+ },
+ "same_calls_qwen_fp16": {
+  "n": 124,
+  "acc": 0.6532,
+  "macro_f1": 0.6485,
+  "hardship_to_aggressive": 0.2188,
+  "ece": 0.1153
+ },
+ "same_calls_gemini": {
+  "n": 124,
+  "acc": 0.4274,
+  "macro_f1": 0.4739,
+  "hardship_to_aggressive": 0.1875,
+  "ece": 0.0478
+ },
+ "full_test_reference": {
+  "qwen_fp16_484": {
+   "acc": 0.6446,
+   "macro_f1": 0.6731
+  },
+  "lightgbm_563": {
+   "acc": 0.7016,
+   "macro_f1": 0.7479
+  }
+ }
+}

@@ -34,22 +34,22 @@ for _ in range(60):
     except OSError:          # server still starting
         time.sleep(3)
         continue
-    if h["data"]["ready"] and h["qwen"]["status"] in ("ready", "unavailable"):
+    if h["data"]["ready"] and h["llm"]["status"] in ("ready", "unavailable"):
         break
     time.sleep(3)
 check("data loaded", h["data"]["ready"], f"{h['data']['ptps']} PTPs")
 check("tabular model loaded", h["tabular"]["ready"])
-check("qwen loaded (model + tokenizer)", h["qwen"]["status"] == "ready" and h["qwen"]["tokenizer_loaded"], h["qwen"].get("error") or h["qwen"]["version"])
+check(f"{h['llm']['label']} ready", h["llm"]["status"] == "ready", h["llm"].get("error") or h["llm"]["version"])
 
 sc = call("/api/live-calls/scenarios")
 check("6 demo scenarios from real calls", len(sc) == 6, ", ".join(s["category"] for s in sc))
 cid = sc[0]["call_id"]
 meta = call(f"/api/live-calls/{cid}")
 n = len(meta["transcript"])
-steps = [call(f"/api/live-calls/{cid}/step", {"turn": k, "audit": False}) for k in range(n)]
+steps = [call(f"/api/live-calls/{cid}/step", {"turn": k, "audit": False, "llm": k == n - 1}) for k in range(n)]
 check("step returns calibrated probability", all(0 < s["credibility"]["p_keep"] < 1 for s in steps))
-q = steps[-1]["qwen"]
-check("qwen inference + parsing + confidence", q.get("available") and abs(sum(q["probs"].values()) - 1) < 1e-3 and 0 < q["confidence"] <= 1,
+q = steps[-1]["llm"]
+check(f"{q.get('label')} inference + parsing + confidence", q.get("available") and abs(sum(q["probs"].values()) - 1) < 1e-3 and 0 < q["confidence"] <= 1,
       f"{q.get('category')} {q.get('confidence')}")
 check("prefix scoring changes with the conversation", len({round(s['credibility']['p_keep'], 4) for s in steps}) > 1)
 check("no future leakage: turn k sees k+1 turns", all(s["turn"] == k for k, s in enumerate(steps)))

@@ -83,11 +83,19 @@ export default function Overview() {
                 </ResponsiveContainer>
               </Card>
             </div>
+            {d.model_quality.llm_label === "Gemini" && (
+              <div className="banner info mt" role="note">
+                <strong>DEPLOYMENT MODE</strong>
+                <span>This website runs Google Gemini as the secondary model so it can be hosted without a GPU. All model results reported
+                  below and in the project report use the fine-tuned Qwen SLM. Gemini's early held-out score: macro-F1{" "}
+                  {d.model_quality.gemini_macro_f1_test?.toFixed(3) ?? "N/A"} on {d.model_quality.gemini_eval_n ?? "N/A"} test calls (partial run).</span>
+              </div>
+            )}
             <Card className="mt" title="Model quality on held-out data" right={<StatusBadge s="MEASURED" />}>
               <div className="grid g4">
                 <Kpi label="Keep AUC, in-call (test)" value={d.model_quality.keep_auc_test.toFixed(3)} note={`Out-of-fold, all PTPs: ${d.model_quality.keep_auc_oof.toFixed(3)}`} />
                 <Kpi label="Calibration error (ECE, test)" value={d.model_quality.keep_ece_test.toFixed(3)} note="Lower is better" />
-                <Kpi label="Category macro-F1" value={d.model_quality.category_macro_f1_test.toFixed(3)} note={`Qwen SLM: ${d.model_quality.qwen_macro_f1_test.toFixed(3)} fp16 / ${d.model_quality.qwen_nf4_macro_f1_test?.toFixed(3) ?? "N/A"} 4-bit`} />
+                <Kpi label="Category macro-F1" value={d.model_quality.category_macro_f1_test.toFixed(3)} note={`Qwen SLM (secondary model): ${d.model_quality.qwen_macro_f1_test.toFixed(3)} fp16 / ${d.model_quality.qwen_nf4_macro_f1_test?.toFixed(3) ?? "N/A"} 4-bit`} />
                 <Kpi label="Hardship → aggressive errors" value={fmtPct(d.model_quality.hardship_misclass_costsens)} note="Cost-sensitive decision; then 0 after guardrails" />
               </div>
             </Card>

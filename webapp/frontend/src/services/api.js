@@ -8,10 +8,14 @@ export class ApiError extends Error {
   }
 }
 
+// Backend address. Empty = same origin (local dev / backend serving the build).
+// On Vercel set VITE_API_BASE to the Render URL, e.g. https://ptp-copilot-api.onrender.com
+const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/+$/, "");
+
 async function request(path, { method = "GET", body, signal } = {}) {
   let res;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API_BASE}/api${path}`, {
       method,
       signal,
       headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -19,7 +23,9 @@ async function request(path, { method = "GET", body, signal } = {}) {
     });
   } catch (e) {
     if (e.name === "AbortError") throw e;
-    throw new ApiError("Cannot reach the backend API. Is the server running?", 0);
+    throw new ApiError(API_BASE
+      ? "Cannot reach the backend API. If it was idle it may be waking up (free hosting sleeps after 15 min); retry in a minute."
+      : "Cannot reach the backend API. Is the server running?", 0);
   }
   let data = null;
   try {
@@ -44,6 +50,7 @@ export const liveCallsApi = {
   get: (id, o) => request(`/live-calls/${encodeURIComponent(id)}`, o),
   step: (id, body, o) => request(`/live-calls/${encodeURIComponent(id)}/step`, { method: "POST", body, ...o }),
   predict: (id, o) => request(`/live-calls/${encodeURIComponent(id)}/predict`, { method: "POST", ...o }),
+  llm: (id, body, o) => request(`/live-calls/${encodeURIComponent(id)}/llm`, { method: "POST", body, ...o }),
   generate: (id, body, o) => request(`/live-calls/${encodeURIComponent(id)}/generate`, { method: "POST", body, ...o }),
 };
 export const customersApi = {

@@ -4,7 +4,7 @@ import { auditApi } from "../services/api";
 import { useApi } from "../hooks/useApi";
 import { Async, CATS, CAT_LABEL, Card, CategoryPill, DataTable, Kpi, PageHead, StatusBadge, fmtDateTime, fmtPct, useClientSort } from "../components/ui";
 
-const KIND = { live_simulation_final: "Live simulation (final turn)", full_call_prediction: "Full-call prediction", treatment_decision: "Treatment decision", slm_generation: "Qwen draft generation" };
+const KIND = { live_simulation_final: "Live simulation (final turn)", full_call_prediction: "Full-call prediction", treatment_decision: "Treatment decision", slm_generation: "LLM draft generation" };
 
 export default function Audit() {
   const nav = useNavigate();
@@ -51,8 +51,8 @@ export default function Audit() {
                   { key: "account_id", label: "Customer", sortable: true },
                   { key: "call_id", label: "Conversation", sortable: true, render: (r) => <div>{r.call_id}<div className="small muted">{r.ptp_id}</div></div> },
                   { key: "kind", label: "Type", render: (r) => <span className="small">{KIND[r.kind] || r.kind}</span> },
-                  { key: "model", label: "Model version", render: (r) => <span className="mono">{r.model_version?.qwen}</span> },
-                  { key: "qwen_confidence", label: "Qwen", sortable: true, render: (r) => r.qwen_available ? <CategoryPill c={r.qwen_category} conf={r.qwen_confidence} /> : <span className="muted small">N/A</span> },
+                  { key: "model", label: "Model version", render: (r) => <span className="mono">{r.model_version?.llm ?? r.model_version?.qwen}</span> },
+                  { key: "llm_confidence", label: "LLM", sortable: true, render: (r) => (r.llm_available ?? r.qwen_available) ? <CategoryPill c={r.llm_category ?? r.qwen_category} conf={r.llm_confidence ?? r.qwen_confidence} /> : <span className="muted small">N/A</span> },
                   { key: "p_keep", label: "Credibility", sortable: true, num: true, render: (r) => fmtPct(r.p_keep, 0) },
                   { key: "final_category", label: "Final category", sortable: true, render: (r) => <CategoryPill c={r.final_category} conf={r.tabular_confidence} /> },
                   { key: "treatment", label: "Treatment", render: (r) => <span className="small">{r.treatment.queue}</span> },

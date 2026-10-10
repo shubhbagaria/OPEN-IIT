@@ -394,6 +394,21 @@ outputs/*.csv/json ┼─> webapp/backend/services.py ── reuses ──> ptp_
 | Recovery lift, cost avoided | business scenarios in `results.json` | PROJECTED |
 | AI-vs-control comparison | no experiment exists in the data | UNAVAILABLE |
 
+**Which secondary model runs (Qwen vs Gemini).** The **fine-tuned Qwen SLM is the project's secondary model**: every reported result, the evaluation, the report and the deck use it. Hosting Qwen on a public website would need a paid GPU, so the **deployed website uses Google Gemini (`gemini-3.5-flash-lite`, API, prompted, not fine-tuned)** in the same slot instead. The choice is made at start-up by `PTP_LLM_PROVIDER` (or `python webapp/start.py --llm …`):
+* `auto` (default): Qwen if a CUDA GPU is available, otherwise Gemini;
+* `qwen`: force the local Qwen SLM;
+* `gemini`: force Gemini, which needs `GEMINI_API_KEY` in the environment (never in code or git).
+
+Gemini's early held-out score (124 of 484 test calls, `experiments/gemini_partial_score.py`; Qwen and LightGBM re-scored on the same calls):
+
+| model | accuracy | macro-F1 | hardship → escape/repeat |
+|---|---|---|---|
+| LightGBM (deployed decision) | 0.694 | 0.678 | 3.1% |
+| Qwen fine-tuned (fp16) | 0.653 | 0.649 | 21.9% |
+| Gemini 3.5 Flash-Lite | 0.427 | 0.474 | 18.8% |
+
+Gemini is weaker because it is only prompted, while the other two learned our labelling conventions. It also takes about 1.8 s per call, so the console shows LightGBM instantly and Gemini asynchronously ("as of turn N"). In deployment mode the Overview shows a notice that the reported model results come from Qwen. Transcripts are sent to Google in this mode: use a paid key and sandbox data only.
+
 **Model loading.** Qwen is loaded once per backend process, in a background thread, through `ptp_copilot.slm.load`. The default is `nf4`, which meets the < 1 GB / < 100 ms SLA; set `PTP_SLM_PRECISION=fp16` for the more accurate fp16 weights (1.28 GB). It is warmed up once, and GPU calls are serialised with a lock. `/api/health` and the sidebar report the real status (`loading` / `ready` / `unavailable` with the error). If Qwen cannot load, every Qwen field shows *unavailable* and the tabular path keeps working. This was verified by starting the server without CUDA torch.
 
 **Live calls are a replay** (badge `LIVE DEMO SIMULATION`). A recorded call from `call_transcripts.csv` is revealed utterance by utterance, paced by the call's own recorded timing ÷ speed (1x/2x/4x). After each utterance the backend re-scores **only the prefix seen so far** with both models. This is stateless prefix re-scoring; the KV-cache incremental mode exists only in the offline benchmark. The ground-truth category and payment outcome are revealed only after the last turn.
@@ -406,7 +421,8 @@ Requirements: Python 3.11 with the packages in §8 plus `fastapi` and `uvicorn`.
 
 ```bash
 # from the repository root: builds the frontend if needed, then serves UI + API on one port
-python webapp/start.py --torch-site "<site-packages of an env with CUDA torch>"   # omit if torch is installed normally
+python webapp/start.py --torch-site "<site-packages of an env with CUDA torch>"   # omit if torch is installed normally (Qwen)
+python webapp/start.py --llm gemini     # deployment mode on a host without a GPU (set GEMINI_API_KEY first)
 # open http://127.0.0.1:8000
 
 # development (hot reload): backend on :8000, Vite dev server on :5173 proxying /api

@@ -23,7 +23,7 @@ import pandas as pd
 from ptp_copilot import features as F
 from ptp_copilot import lexicon as lx
 from ptp_copilot import policy as P
-from ptp_copilot.config import CATEGORIES, MODEL_DIR, OUT_DIR
+from ptp_copilot.config import CATEGORIES, DATA_DIR, MODEL_DIR, OUT_DIR
 
 APP_CACHE = OUT_DIR / "app_cache.pkl"
 AUDIT_LOG = OUT_DIR / "app_audit.jsonl"
@@ -57,17 +57,30 @@ class DataStore:
 
     def load(self):
         t0 = time.time()
-        src_mtime = max(p.stat().st_mtime for p in (OUT_DIR / "enriched_ptp_predictions.csv", MODEL_DIR / "models.pkl"))
-        if APP_CACHE.exists() and APP_CACHE.stat().st_mtime > src_mtime:
+        # Content fingerprint of the inputs (not file timestamps: a fresh git clone on a host
+        # gives every file a new mtime, which would wrongly force a slow, memory-heavy rebuild).
+        import hashlib
+        h = hashlib.sha1()
+        for p in (OUT_DIR / "enriched_ptp_predictions.csv", MODEL_DIR / "models.pkl", DATA_DIR / "ptps.csv"):
+            b = p.read_bytes()
+            h.update(b.replace(b"\r\n", b"\n") if p.suffix == ".csv" else b)   # same hash on Windows and Linux checkouts
+        fingerprint = h.hexdigest()
+        c = None
+        if APP_CACHE.exists():
             with open(APP_CACHE, "rb") as fh:
                 c = pickle.load(fh)
+            if c.get("fingerprint") != fingerprint:
+                c = None
+        if c is not None:
+            print("[data] using prepared cache outputs/app_cache.pkl")
         else:
             from ptp_copilot.pipeline import build
             D, lab, ts, pf, base, conv_cols = build()
             c = dict(base=base, transcripts=D["transcripts"], payments=D["payments"], accounts=D["accounts"],
                      dials=D["dials"][["attempt_id", "account_id", "attempt_ts", "channel", "agent_id",
                                        "network_response", "disposition", "remark", "ptp_id", "talk_duration_s"]],
-                     agents=D["agents"], lenders=D["lenders"], annotations=D["annotations"])
+                     agents=D["agents"], lenders=D["lenders"], annotations=D["annotations"],
+                     fingerprint=fingerprint)
             with open(APP_CACHE, "wb") as fh:
                 pickle.dump(c, fh)
         self.base = c["base"]
@@ -84,6 +97,8 @@ class DataStore:
         self.lat_tab = json.load(open(OUT_DIR / "latency_tabular.json"))
         self.lat_slm = json.load(open(OUT_DIR / "latency_slm.json"))
         self.slm_eval = json.load(open(OUT_DIR / "slm_eval.json", encoding="utf-8"))
+        ge = OUT_DIR / "gemini_eval.json"
+        self.gemini_eval = json.load(open(ge))["final"] if ge.exists() else None
         self.base_by_ptp = self.base.set_index("ptp_id")
         self.en_by_ptp = self.en.set_index("ptp_id")
         self.calls_by_id = {k: g.reset_index(drop=True) for k, g in self.tr.groupby("call_id")}
@@ -240,6 +255,112 @@ class QwenService:
                     version_tag=f"ptp-qwen0.5b-lora-r16-{built}-{self.precision}")
 
 
+# =============================================================================== Gemini (default LLM)
+class GeminiService:
+    """Google Gemini via API (ptp_copilot.gemini_llm), same interface as QwenService.
+    It replaces Qwen as the conversation model; the Qwen code is kept and selectable."""
+    label = "Gemini"
+    provider = "gemini"
+
+    def __init__(self):
+        from ptp_copilot.gemini_llm import MODEL
+        self.model = MODEL
+        self.precision = "api"
+        self.status = "not_loaded"
+        self.error = None
+        self.device = "Google Cloud API"
+        self.vram_gb = None
+        self.latencies = deque(maxlen=200)
+        self.gen_latencies = deque(maxlen=50)
+        self.loaded_at = None
+        self.temperature = None
+        self.lock = threading.Semaphore(4)            # cap concurrent API calls from this server
+
+    def start(self):
+        threading.Thread(target=self._load, daemon=True).start()
+
+    def _load(self):
+        self.status = "loading"
+        try:
+            from ptp_copilot.gemini_llm import GeminiClassifier, call_text
+            self.clf = GeminiClassifier(self.model)
+            self.call_text = call_text
+            self.temperature = self.clf.T
+            self.clf.classify_text("CTX lang=english portfolio=pl_salaried prior_broken=0 salary_day=? promise=Rs1000 on 01 Jan\n"
+                                   "CALL:\nA: Hello, am I speaking with the borrower?\nC: Yes.")   # validates key + model
+            self.status = "ready"
+            self.loaded_at = time.strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[gemini] ready ({self.model}), temperature {self.temperature}")
+        except Exception as e:  # surfaced to the UI; never replaced by fake output
+            self.status = "unavailable"
+            self.error = f"{type(e).__name__}: {str(e)[:300]}"
+            print("[gemini] unavailable:", self.error)
+
+    def _text(self, ctx, turns):
+        from ptp_copilot.gemini_llm import ctx_line
+        return self.call_text(ctx_line(ctx), turns)
+
+    def classify(self, ctx, turns):
+        if self.status != "ready":
+            return dict(available=False, status=self.status, reason=self.error or "Gemini is not ready yet")
+        try:
+            with self.lock:
+                o = self.clf.classify_text(self._text(ctx, turns), retries=3)
+        except Exception as e:
+            return dict(available=False, status="error", reason=f"{type(e).__name__}: {str(e)[:200]}")
+        self.latencies.append(o["latency_ms"])
+        i = int(o["probs"].argmax())
+        return dict(available=True, category=CATEGORIES[i], confidence=float(o["probs"][i]),
+                    probs={c: float(v) for c, v in zip(CATEGORIES, o["probs"])}, reasons=o["reasons"],
+                    latency_ms=round(o["latency_ms"], 1), prompt_tokens=o["prompt_tokens"])
+
+    def generate(self, ctx, turns, max_new_tokens=None):
+        if self.status != "ready":
+            return dict(available=False, status=self.status, reason=self.error or "Gemini is not ready yet")
+        try:
+            with self.lock:
+                d = self.clf.draft(self._text(ctx, turns))
+        except Exception as e:
+            return dict(available=False, status="error", reason=f"{type(e).__name__}: {str(e)[:200]}")
+        self.gen_latencies.append(d["latency_ms"])
+        return dict(available=True, raw=d["text"], format_valid=True, category=None, utterance=d["text"],
+                    tokens=None, latency_ms=round(d["latency_ms"], 1))
+
+    def version(self):
+        return dict(name=f"Google {self.model} (API, prompted, not fine-tuned)", precision="api",
+                    trained_on=None, epochs=None, steps=None, version_tag=f"{self.model}-api")
+
+
+def _cuda_available():
+    try:
+        import ptp_copilot.slm  # noqa: F401  (appends PTP_TORCH_SITE to sys.path if set)
+        import torch
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
+def make_llm():
+    """Which conversation model sits next to LightGBM.
+
+    Qwen (fine-tuned, local GPU) is THE secondary model of the project: every reported result,
+    the evaluation, the report and the deck use it. Gemini (Google API) exists only so the
+    website can be deployed on a host without a GPU, avoiding paid GPU hosting for Qwen.
+
+      PTP_LLM_PROVIDER=auto   (default) Qwen if a CUDA GPU is available, otherwise Gemini
+      PTP_LLM_PROVIDER=qwen   force the local Qwen SLM
+      PTP_LLM_PROVIDER=gemini force Gemini (deployment); needs GEMINI_API_KEY
+    """
+    choice = os.environ.get("PTP_LLM_PROVIDER", "auto").lower()
+    if choice == "auto":
+        choice = "qwen" if _cuda_available() else "gemini"
+    if choice == "qwen":
+        q = QwenService()
+        q.label, q.provider = "Qwen SLM", "qwen"
+        return q
+    return GeminiService()
+
+
 # =============================================================================== assessment
 EVIDENCE_RULES = [
     # (signal column in turn_signals, polarity, text)
@@ -377,7 +498,7 @@ def ask_points(cat, utt_kind, ctx, feats):
     }.get(cat, [])
 
 
-def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
+def assess(store, tab, llm, ptp_id, upto_turn=None, use_llm=True):
     b = store.base_by_ptp.loc[ptp_id]
     ctx = b.to_dict()
     ctx["ptp_id"] = ptp_id
@@ -405,7 +526,8 @@ def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
     issues = P.compliance_check(utt, final_cat)
     park, rem, queue, fu = P.parking_plan(final_cat, s["p_keep"], ctx["promise_lag_days"], rails)
     turns = list(zip(prefix["speaker"], prefix["text"]))
-    q = qwen.classify(ctx, turns) if use_qwen else dict(available=False, status="skipped", reason="not requested")
+    q = llm.classify(ctx, turns) if use_llm else dict(available=False, status="skipped", reason="not requested")
+    q["label"] = getattr(llm, "label", "Qwen SLM")
     shap = s["shap"]
     top = shap.abs().sort_values(ascending=False).head(5).index
     from ptp_copilot.pipeline import READABLE
@@ -423,7 +545,7 @@ def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
         tabular_category=dict(category=s["category"], confidence=round(float(s["probs"].max()), 4),
                               probs={c: round(float(v), 4) for c, v in zip(CATEGORIES, s["probs"])},
                               decision="cost-sensitive (hardship errors weighted 8x)"),
-        qwen=q,
+        llm=q,
         final_category=final_cat, guardrails=rails,
         hardship_safeguard=bool(hardship or any("hardship" in r or "vulnerable" in r for r in rails)),
         privacy_safeguard=bool(privacy),
@@ -438,7 +560,7 @@ def assess(store, tab, qwen, ptp_id, upto_turn=None, use_qwen=True):
                        ask=ask_points(final_cat, utt_kind, ctx, rail_feats),
                        parking_days=park, reminders=rem, queue=queue, follow_up=fu,
                        policy_check="pass" if not issues else "blocked"),
-        latency_ms=dict(tabular=round(s["latency_ms"], 1), qwen=q.get("latency_ms")),
+        latency_ms=dict(tabular=round(s["latency_ms"], 1), llm=q.get("latency_ms")),
         ground_truth=dict(category=_clean(store.en_by_ptp.loc[ptp_id, "ground_truth_category"]),
                           outcome=_clean(store.en_by_ptp.loc[ptp_id, "status"]),
                           note="Revealed for evaluation only; never used by the live models"),
@@ -456,8 +578,9 @@ class AuditLog:
                    n_turns=a["n_turns"], model_version=model_version,
                    p_keep=a["credibility"]["p_keep"], tabular_category=a["tabular_category"]["category"],
                    tabular_confidence=a["tabular_category"]["confidence"],
-                   qwen_category=a["qwen"].get("category"), qwen_confidence=a["qwen"].get("confidence"),
-                   qwen_available=a["qwen"].get("available"), final_category=a["final_category"],
+                   llm_label=a["llm"].get("label"), llm_category=a["llm"].get("category"),
+                   llm_confidence=a["llm"].get("confidence"), llm_available=a["llm"].get("available"),
+                   final_category=a["final_category"],
                    guardrails=a["guardrails"], hardship_safeguard=a["hardship_safeguard"],
                    privacy_safeguard=a["privacy_safeguard"], evidence=[e["text"] for e in a["evidence"]],
                    treatment=a["treatment"], policy_check=a["treatment"]["policy_check"],

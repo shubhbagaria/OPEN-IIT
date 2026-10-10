@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { QwenStatusLine, useHealth } from "./Health";
+import { LlmStatusLine, llmLabel, useHealth } from "./Health";
 
 const I = {
   overview: <path d="M3 13h8V3H3zm0 8h8v-6H3zm10 0h8V11h-8zm0-18v6h8V3z" />,
@@ -43,10 +43,10 @@ export default function Layout({ children }) {
           ))}
         </nav>
         <div className="side-status" aria-live="polite">
-          <div className="title">Qwen SLM</div>
-          <div className="row" style={{ marginTop: 4 }}><QwenStatusLine /></div>
-          <div className="row"><span>Model</span><span className="mono" style={{ textAlign: "right" }}>{health?.qwen?.version ?? "N/A"}</span></div>
-          <div className="row"><span>Device</span><span style={{ textAlign: "right" }}>{health?.qwen?.device ? health.qwen.device.replace("NVIDIA GeForce ", "") : "N/A"}</span></div>
+          <div className="title">{llmLabel(health)}</div>
+          <div className="row" style={{ marginTop: 4 }}><LlmStatusLine /></div>
+          <div className="row"><span>Model</span><span className="mono" style={{ textAlign: "right" }}>{health?.llm?.version ?? "N/A"}</span></div>
+          <div className="row"><span>Device</span><span style={{ textAlign: "right" }}>{health?.llm?.device ? health.llm.device.replace("NVIDIA GeForce ", "") : "N/A"}</span></div>
           <div className="row"><span>Tabular</span><span>{health?.tabular?.ready ? "Ready" : "N/A"}</span></div>
           <div className="row"><span>Data</span><span>{health?.data?.ready ? `${health.data.ptps.toLocaleString()} PTPs` : "Loading"}</span></div>
           <div className="row"><span>Checked</span><span>{at ? at.toLocaleTimeString() : "N/A"}</span></div>
@@ -67,7 +67,7 @@ export default function Layout({ children }) {
             </nav>
           </div>
           <div className="small muted row" style={{ gap: 6 }}>
-            <QwenStatusLine />
+            <LlmStatusLine />
           </div>
         </header>
         <main className="content">{children}</main>

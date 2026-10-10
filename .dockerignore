@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/__pycache__
+*.log
+webapp/frontend
+outputs/hf
+outputs/slm_merged
+outputs/slm_lora
+outputs/figures
+outputs/app_audit.jsonl
+outputs/gemini_eval_raw.jsonl
+experiments

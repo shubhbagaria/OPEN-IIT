@@ -2,7 +2,8 @@
 
     python webapp/start.py                 # build the frontend if needed, then serve app + API on :8000
     python webapp/start.py --dev           # backend only (run `npm run dev` in webapp/frontend for hot reload on :5173)
-    python webapp/start.py --torch-site <path-to-site-packages-with-CUDA-torch>
+    python webapp/start.py --torch-site <path-to-site-packages-with-CUDA-torch>   # Qwen (auto-selected when a GPU is present)
+    python webapp/start.py --llm gemini    # deployment mode without a GPU (needs GEMINI_API_KEY)
 
 Open http://127.0.0.1:8000 afterwards.
 """
@@ -22,9 +23,12 @@ ap.add_argument("--dev", action="store_true")
 ap.add_argument("--rebuild", action="store_true")
 ap.add_argument("--torch-site", default=os.environ.get("PTP_TORCH_SITE"))
 ap.add_argument("--precision", default=os.environ.get("PTP_SLM_PRECISION", "nf4"), choices=["nf4", "fp16", "int8"])
+ap.add_argument("--llm", default=os.environ.get("PTP_LLM_PROVIDER", "auto"), choices=["auto", "qwen", "gemini"],
+                help="secondary conversation model: auto (Qwen if a CUDA GPU is available, else Gemini), "
+                     "qwen (local fine-tuned SLM; used for all reported results) or gemini (API; for GPU-less deployment)")
 a = ap.parse_args()
 
-env = dict(os.environ, PYTHONIOENCODING="utf-8", PTP_SLM_PRECISION=a.precision)
+env = dict(os.environ, PYTHONIOENCODING="utf-8", PTP_SLM_PRECISION=a.precision, PTP_LLM_PROVIDER=a.llm)
 if a.torch_site:
     env["PTP_TORCH_SITE"] = a.torch_site
 
@@ -36,6 +40,6 @@ if not a.dev and (a.rebuild or not (FRONT / "dist" / "index.html").exists()):
         subprocess.check_call([npm, "install"], cwd=FRONT)
     subprocess.check_call([npm, "run", "build"], cwd=FRONT)
 
-print(f"Serving on http://127.0.0.1:{a.port}  (Qwen precision {a.precision})")
+print(f"Serving on http://127.0.0.1:{a.port}  (conversation model: {a.llm})")
 subprocess.call([sys.executable, "-m", "uvicorn", "webapp.backend.app:app", "--host", "127.0.0.1",
                  "--port", str(a.port)], cwd=ROOT, env=env)

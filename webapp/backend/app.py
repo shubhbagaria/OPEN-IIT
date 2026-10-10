@@ -20,16 +20,21 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ptp_copilot.config import CATEGORIES, COST, MODEL_DIR  # noqa: E402
-from webapp.backend.services import (AuditLog, DataStore, QwenService, TabularModel, _clean, assess,  # noqa: E402
+from webapp.backend.services import (AuditLog, DataStore, TabularModel, _clean, assess, make_llm,  # noqa: E402
                                      records)
 
 app = FastAPI(title="CreditNirvana PTP Intelligence API", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-                   allow_methods=["*"], allow_headers=["*"])
+# Browser origins allowed to call this API. Local Vite dev server always; on Render add the
+# Vercel site with CORS_ORIGINS="https://<project>.vercel.app" (comma-separated) and, optionally,
+# CORS_ORIGIN_REGEX for Vercel preview URLs, e.g. "https://<project>(-[a-z0-9-]+)?\.vercel\.app".
+_origins = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173"]
+_origins += [o.strip().rstrip("/") for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_origin_regex=os.environ.get("CORS_ORIGIN_REGEX") or None,
+                   allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
 STORE = DataStore()
 TAB = None
-QWEN = QwenService()
+LLM = make_llm()                      # Gemini by default; PTP_LLM_PROVIDER=qwen for the local SLM
 AUDIT = AuditLog()
 BOOT = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -37,7 +42,7 @@ BOOT = time.strftime("%Y-%m-%d %H:%M:%S")
 @app.on_event("startup")
 def _startup():
     global TAB
-    QWEN.start()                      # loads in the background; health reports progress
+    LLM.start()                       # loads in the background; health reports progress
     try:
         STORE.load()
     except Exception as e:
@@ -60,7 +65,7 @@ def tab_version():
 
 
 def model_versions():
-    return dict(tabular=tab_version(), qwen=QWEN.version()["version_tag"])
+    return dict(tabular=tab_version(), llm=LLM.version()["version_tag"])
 
 
 def pct(a):
@@ -71,7 +76,7 @@ def pct(a):
 # =============================================================================== health
 @app.get("/api/health")
 def health():
-    v = QWEN.version()
+    v = LLM.version()
     return dict(
         backend="ok", started_at=BOOT,
         data=dict(ready=STORE.ready, error=STORE.error, loaded_at=STORE.loaded_at,
@@ -79,13 +84,16 @@ def health():
                   replayable_calls=len(STORE.calls) if STORE.ready else None),
         tabular=dict(ready=TAB is not None, version=tab_version(),
                      measured_latency_ms=pct(TAB.latencies) if TAB else None),
-        qwen=dict(status=QWEN.status, error=QWEN.error, model=v["name"], version=v["version_tag"],
-                  precision=QWEN.precision, device=QWEN.device, vram_gb=QWEN.vram_gb, loaded_at=QWEN.loaded_at,
-                  tokenizer_loaded=QWEN.status == "ready", adapter="LoRA r=16 merged into weights (outputs/slm_merged)",
-                  temperature=QWEN.temperature, measured_latency_ms=pct(QWEN.latencies),
-                  measured_generation_ms=pct(QWEN.gen_latencies),
-                  benchmark=next((r for r in STORE.lat_slm["rows"] if r["precision"] == QWEN.precision), None)
-                  if STORE.ready else None),
+        llm=dict(provider=getattr(LLM, "provider", "qwen"), label=getattr(LLM, "label", "Qwen SLM"),
+                 status=LLM.status, error=LLM.error, model=v["name"], version=v["version_tag"],
+                 precision=LLM.precision, device=LLM.device, vram_gb=LLM.vram_gb, loaded_at=LLM.loaded_at,
+                 temperature=LLM.temperature, measured_latency_ms=pct(LLM.latencies),
+                 measured_generation_ms=pct(LLM.gen_latencies),
+                 hosting=("Google cloud API: transcripts are sent to Google" if getattr(LLM, "provider", "") == "gemini"
+                          else "Local GPU: data stays on this machine"),
+                 benchmark=(STORE.gemini_eval if getattr(LLM, "provider", "") == "gemini" else
+                            next((r for r in STORE.lat_slm["rows"] if r["precision"] == LLM.precision), None))
+                 if STORE.ready else None),
     )
 
 
@@ -136,6 +144,9 @@ def overview():
                            category_macro_f1_test=R["category_vs_ground_truth"]["report"]["macro avg"]["f1-score"],
                            qwen_macro_f1_test=STORE.slm_eval["final"]["macro_f1"],
                            qwen_nf4_macro_f1_test=STORE.lat_slm.get("nf4_quality_test_final", {}).get("macro_f1"),
+                           gemini_macro_f1_test=(STORE.gemini_eval or {}).get("macro_f1"),
+                           gemini_eval_n=(STORE.gemini_eval or {}).get("n"),
+                           llm_label=getattr(LLM, "label", "Qwen SLM"),
                            hardship_misclass_costsens=R["hardship_misclassified_as_aggressive_costsens"]),
     )
 
@@ -235,16 +246,31 @@ def _ptp_for_call(call_id):
 def step(call_id: str, body: dict = Body(default={})):
     need_data()
     ptp = _ptp_for_call(call_id)
-    a = assess(STORE, TAB, QWEN, ptp, upto_turn=body.get("turn"), use_qwen=body.get("qwen", True))
+    a = assess(STORE, TAB, LLM, ptp, upto_turn=body.get("turn"), use_llm=body.get("llm", True))
     if a["is_final"] and body.get("audit", True):
         a["audit_id"] = AUDIT.write("live_simulation_final", a, model_versions())["audit_id"]
     return a
 
 
+@app.post("/api/live-calls/{call_id}/llm")
+def llm_only(call_id: str, body: dict = Body(default={})):
+    """Language-model opinion for a transcript prefix, without re-running the tabular path.
+    Lets the console show LightGBM instantly and the (slower, API-based) LLM asynchronously."""
+    need_data()
+    ptp = _ptp_for_call(call_id)
+    b = STORE.base_by_ptp.loc[ptp]
+    tr = STORE.calls_by_id[call_id]
+    k = len(tr) - 1 if body.get("turn") is None else int(body["turn"])
+    q = LLM.classify(b.to_dict(), list(zip(tr["speaker"].iloc[:k + 1], tr["text"].iloc[:k + 1])))
+    q["label"] = getattr(LLM, "label", "Qwen SLM")
+    q["turn"] = k
+    return q
+
+
 @app.post("/api/live-calls/{call_id}/predict")
 def predict(call_id: str):
     need_data()
-    a = assess(STORE, TAB, QWEN, _ptp_for_call(call_id))
+    a = assess(STORE, TAB, LLM, _ptp_for_call(call_id))
     a["audit_id"] = AUDIT.write("full_call_prediction", a, model_versions())["audit_id"]
     return a
 
@@ -257,9 +283,9 @@ def generate(call_id: str, body: dict = Body(default={})):
     b = STORE.base_by_ptp.loc[ptp]
     tr = STORE.calls_by_id[call_id]
     k = len(tr) - 1 if body.get("turn") is None else int(body["turn"])
-    g = QWEN.generate(b.to_dict(), list(zip(tr["speaker"].iloc[:k + 1], tr["text"].iloc[:k + 1])))
+    g = LLM.generate(b.to_dict(), list(zip(tr["speaker"].iloc[:k + 1], tr["text"].iloc[:k + 1])))
     if g.get("available"):
-        a = assess(STORE, TAB, QWEN, ptp, upto_turn=k, use_qwen=False)
+        a = assess(STORE, TAB, LLM, ptp, upto_turn=k, use_llm=False)
         g["compliance_issues_raw"] = P.compliance_check(g["utterance"] or g["raw"], a["final_category"])
         g["shown_to_agent"] = False
         g["note"] = ("Raw SLM draft for transparency. The agent is shown the approved script for the guard-railed "
@@ -388,7 +414,7 @@ def treatment(ptp_id: str):
         return dict(ptp_id=ptp_id, live=False,
                     reason="No transcript for this PTP (field visit); showing the stored decision only.",
                     stored={k: _clean(v) for k, v in s.to_dict().items()})
-    a = assess(STORE, TAB, QWEN, ptp_id)
+    a = assess(STORE, TAB, LLM, ptp_id)
     a["live"] = True
     a["context"] = {k: _clean(STORE.base_by_ptp.loc[ptp_id, k]) for k in
                     ["portfolio", "bucket_ord", "dpd_start", "ability_to_pay_estimate", "salary_credit_day",

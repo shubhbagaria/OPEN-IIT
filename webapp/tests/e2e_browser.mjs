@@ -29,7 +29,7 @@ async function visit(path, mustContain, shot) {
 
 // 1 health in sidebar
 let t = await visit("/overview", ["PTP Intelligence Overview", "PTPs captured", "ACTUAL", "PROJECTED", "MEASURED", "Ready"], "01_overview");
-check("sidebar shows real Qwen version", /ptp-qwen0\.5b-lora-r16/.test(t));
+check("sidebar shows real LLM version", /gemini-[\w.-]+-api|ptp-qwen0\.5b-lora-r16/.test(t));
 // 2 live calls list + filter
 t = await visit("/live-calls?category=third_party", ["Live Calls", "Demo scenarios", "Third-Party Promise"], "02_live_calls");
 // 3 live call detail + simulation (third-party scenario)
@@ -56,16 +56,16 @@ for (const s of [tp, hard]) {
   t = await text();
   check(`simulation progressive (${s.category})`, midTurns !== null && midTurns < s.n_turns, `mid-run turns shown=${midTurns}, score=${midScore}`);
   check(`simulation completed (${s.category})`, t.includes("After the call: ground truth") && t.includes("Copilot now") && t.toLowerCase().includes("say next"));
-  check(`qwen output visible (${s.category})`, /Qwen SLM[\s\S]{0,80}(agrees|disagrees)/.test(t));
+  check(`LLM output visible (${s.category})`, /(Gemini|Qwen SLM)[\s\S]{0,120}(agrees|disagrees)/.test(t));
   if (s.category === "third_party") check("privacy safeguard banner shown", t.includes("PRIVACY SAFEGUARD ACTIVE"));
   if (s.category === "genuine_infeasible") check("hardship safeguard banner shown", t.includes("HARDSHIP SAFEGUARD ACTIVE"));
   await page.screenshot({ path: `${OUT}/04_live_done_${s.category}.png`, fullPage: true });
 }
 // raw qwen draft
-await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Generate raw Qwen draft")).click());
-await sleep(6000);
+await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Generate raw .* draft/.test(b.textContent)).click());
+await sleep(15000);
 t = await text();
-check("raw Qwen draft generated", t.includes("Raw Qwen output (not shown to agent)"));
+check("raw LLM draft generated", /Raw .* output \(not shown to agent\)/.test(t));
 // 4 customer page via link
 const acc = (await (await fetch(BASE + `/api/live-calls/${hard.call_id}`)).json()).account.account_id;
 await visit(`/customers/${acc}`, ["PTP history", "Payment timeline", "Account health"], "05_customer");

@@ -6,8 +6,10 @@ out_test/
 # --- FINAL branch: large / regenerable artefacts (see README §8) ---
 outputs/hf/
 outputs/slm_merged/
-outputs/app_cache.pkl
 outputs/app_audit.jsonl
 webapp/frontend/node_modules/
 webapp/frontend/dist/
 *.log
+
+# outputs/app_cache.pkl IS committed: the deployed backend loads it instead of rebuilding
+# features at start-up (fits Render's 512 MB free instance; regenerated automatically if inputs change).

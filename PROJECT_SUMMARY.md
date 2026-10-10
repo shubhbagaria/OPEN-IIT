@@ -137,6 +137,11 @@ We do **not** transcribe audio ourselves: the system consumes CN's ASR output. T
 
 Tested: API 15/15 and browser end-to-end 27/27 pass.
 
+**Secondary model: Qwen in results, Gemini in deployment.**
+- **Qwen everywhere results are reported:** the fine-tuned Qwen SLM is the secondary model for all reported results, the report and the deck.
+- **Gemini on the public website:** hosting Qwen would need a paid GPU, so the deployed site uses Google Gemini 3.5 Flash-Lite (API) in the same slot. `PTP_LLM_PROVIDER=auto` picks Qwen when a GPU is available, otherwise Gemini.
+- **Gemini's early score:** on 124 held-out calls, Gemini reaches macro-F1 0.474, vs 0.649 for Qwen and 0.678 for LightGBM on the same calls. It is prompted, not trained on our labels, and takes about 1.8 s per call, so it runs asynchronously.
+
 ## 9. Deliverables and where they are
 
 | Deliverable | Location |
@@ -154,7 +159,8 @@ Tested: API 15/15 and browser end-to-end 27/27 pass.
 ```bash
 python run_all.py                 # pipeline + figures (CPU, ~4 min)
 python run_all.py --slm           # + fine-tune / evaluate / benchmark Qwen (GPU)
-python webapp/start.py            # dashboard at http://127.0.0.1:8000
+python webapp/start.py            # dashboard at http://127.0.0.1:8000 (Qwen when a GPU is present)
+python webapp/start.py --llm gemini   # deployment mode without a GPU (needs GEMINI_API_KEY)
 ```
 
 ## 11. Known limitations

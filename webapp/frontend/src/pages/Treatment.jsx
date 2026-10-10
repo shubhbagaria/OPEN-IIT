@@ -36,7 +36,7 @@ function Decision({ ptp }) {
             <div className="flow">
               <div className="node"><h5>Conversation credibility</h5><div className="big num">{fmtPct(a.credibility.p_keep, 0)}</div><div className="small muted">LightGBM in-call, calibrated · risk {a.credibility.risk}</div></div>
               <div className="node"><h5>Behaviour category</h5><CategoryPill c={a.tabular_category.category} conf={a.tabular_category.confidence} />
-                <div className="small muted" style={{ marginTop: 6 }}>Qwen: {a.qwen.available ? <><CategoryPill c={a.qwen.category} conf={a.qwen.confidence} /></> : "unavailable"}</div></div>
+                <div className="small muted" style={{ marginTop: 6 }}>{a.llm.label}: {a.llm.available ? <><CategoryPill c={a.llm.category} conf={a.llm.confidence} /></> : "unavailable"}</div></div>
               <div className="node"><h5>Customer context</h5><div className="small">{c.portfolio} · DPD {c.dpd_start}<br />{fmtInr(c.promised_amount)} of {fmtInr(c.overdue_at_capture)} overdue<br />ability to pay {c.ability_to_pay_estimate ?? "N/A"} · {sal}</div></div>
               <div className="node"><h5>Hardship</h5>{a.hardship_safeguard ? <span className="badge projected">Safeguard active</span> : <span className="small muted">No hardship signal</span>}
                 <div className="small muted" style={{ marginTop: 6 }}>{a.evidence.filter((e) => e.polarity === "!").map((e) => e.text).join("; ") || "N/A"}</div></div>
@@ -66,7 +66,7 @@ function Decision({ ptp }) {
               <Card title="Reasoning trace" sub="Structured, deterministic steps, not model chain-of-thought">
                 <ol className="small" style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 6 }}>
                   <li>Tabular model scored the full transcript: P(kept) = {fmtPct(a.credibility.p_keep)}; cost-sensitive category = {CAT_LABEL[a.tabular_category.category]}.</li>
-                  <li>Qwen SLM second opinion: {a.qwen.available ? `${CAT_LABEL[a.qwen.category]} (${fmtPct(a.qwen.confidence, 0)})` : "unavailable"}.</li>
+                  <li>{a.llm.label} second opinion: {a.llm.available ? `${CAT_LABEL[a.llm.category]} (${fmtPct(a.llm.confidence, 0)})` : "unavailable"}{a.llm.reasons?.length ? `: ${a.llm.reasons.join("; ")}` : ""}.</li>
                   <li>Guardrails: {a.guardrails.length ? a.guardrails.join("; ") : "none triggered"}. Final category = {CAT_LABEL[a.final_category]}.</li>
                   <li>Parking engine: {CAT_LABEL[a.final_category]} × credibility {fmtPct(a.credibility.p_keep, 0)} × promise lag {c.promise_lag_days}d → {QUEUE_LABEL[a.treatment.queue]}, {a.treatment.parking_days} day(s).</li>
                   <li>Approved {a.treatment.utterance_kind} rendered in the borrower's language; compliance filter: {a.treatment.policy_check}.</li>

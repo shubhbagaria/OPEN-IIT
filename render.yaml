@@ -1,0 +1,19 @@
+# Render Blueprint: backend API of the PTP Credibility Copilot website (free instance).
+# Frontend is on Vercel; set CORS_ORIGINS to the Vercel URL after it is deployed.
+services:
+  - name: ptp-copilot-api
+    type: web
+    runtime: docker
+    plan: free
+    branch: FINAL
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    autoDeployTrigger: commit
+    healthCheckPath: /api/health
+    envVars:
+      - key: PTP_LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

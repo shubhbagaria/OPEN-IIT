@@ -1,0 +1,10 @@
+# Backend runtime for the deployed website (Render, Gemini mode, CPU only).
+# Qwen (torch / transformers / peft) is not needed: the deployed site uses Gemini.
+pandas==3.0.6
+numpy==2.4.6
+scikit-learn==1.9.1
+lightgbm==4.7.0
+scipy==1.17.1
+fastapi==0.143.0
+uvicorn==0.54.0
+google-genai==2.29.0
