@@ -1,6 +1,9 @@
 import puppeteer from "puppeteer-core";
 
-const BASE = "http://127.0.0.1:8000";
+// APP_URL = where the website is served; API_URL = backend (same as APP_URL when the backend serves the build)
+const BASE = process.env.APP_URL || "http://127.0.0.1:8000";
+const API = process.env.API_URL || BASE;
+const SIM_TIMEOUT_MS = Number(process.env.SIM_TIMEOUT_MS || 90000);
 const OUT = process.argv[2] || ".";
 const browser = await puppeteer.launch({
   executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
@@ -33,7 +36,7 @@ check("sidebar shows real LLM version", /gemini-[\w.-]+-api|ptp-qwen0\.5b-lora-r
 // 2 live calls list + filter
 t = await visit("/live-calls?category=third_party", ["Live Calls", "Demo scenarios", "Third-Party Promise"], "02_live_calls");
 // 3 live call detail + simulation (third-party scenario)
-const sc = await (await fetch(BASE + "/api/live-calls/scenarios")).json();
+const sc = await (await fetch(API + "/api/live-calls/scenarios")).json();
 const tp = sc.find((s) => s.category === "third_party");
 const hard = sc.find((s) => s.category === "genuine_infeasible");
 for (const s of [tp, hard]) {
@@ -42,7 +45,7 @@ for (const s of [tp, hard]) {
   await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent === "Start").click());
   const t0 = Date.now();
   let midTurns = null, midScore = null;
-  while (Date.now() - t0 < 90000) {
+  while (Date.now() - t0 < SIM_TIMEOUT_MS) {
     await sleep(700);
     const st = await page.evaluate(() => ({
       turns: document.querySelectorAll(".msg").length,
@@ -51,11 +54,11 @@ for (const s of [tp, hard]) {
     }));
     if (st.turns >= 3 && midTurns === null) { midTurns = st.turns; midScore = st.cred; await page.screenshot({ path: `${OUT}/03_live_mid_${s.category}.png`, fullPage: false }); }
     const [a, b] = (st.pos || "Turn 0/1").replace("Turn ", "").split("/").map(Number);
-    if (a === b && (await text()).includes("After the call: ground truth")) break;
+    if (a === b && (await text()).includes("Ground-truth category")) break;   // final card only
   }
   t = await text();
   check(`simulation progressive (${s.category})`, midTurns !== null && midTurns < s.n_turns, `mid-run turns shown=${midTurns}, score=${midScore}`);
-  check(`simulation completed (${s.category})`, t.includes("After the call: ground truth") && t.includes("Copilot now") && t.toLowerCase().includes("say next"));
+  check(`simulation completed (${s.category})`, t.includes("Ground-truth category") && t.includes("Copilot now") && t.toLowerCase().includes("say next"));
   check(`LLM output visible (${s.category})`, /(Gemini|Qwen SLM)[\s\S]{0,120}(agrees|disagrees)/.test(t));
   if (s.category === "third_party") check("privacy safeguard banner shown", t.includes("PRIVACY SAFEGUARD ACTIVE"));
   if (s.category === "genuine_infeasible") check("hardship safeguard banner shown", t.includes("HARDSHIP SAFEGUARD ACTIVE"));
@@ -63,11 +66,11 @@ for (const s of [tp, hard]) {
 }
 // raw qwen draft
 await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => /Generate raw .* draft/.test(b.textContent)).click());
-await sleep(15000);
+await sleep(45000);   // API models can queue behind rate limits
 t = await text();
 check("raw LLM draft generated", /Raw .* output \(not shown to agent\)/.test(t));
 // 4 customer page via link
-const acc = (await (await fetch(BASE + `/api/live-calls/${hard.call_id}`)).json()).account.account_id;
+const acc = (await (await fetch(API + `/api/live-calls/${hard.call_id}`)).json()).account.account_id;
 await visit(`/customers/${acc}`, ["PTP history", "Payment timeline", "Account health"], "05_customer");
 await visit("/customers", ["Customer Intelligence", "Accounts"]);
 // 5 treatment
@@ -79,7 +82,7 @@ await visit("/agents/TA013", ["Why this signal?", "POTENTIAL PTP INFLATION DETEC
 await visit("/analytics", ["Analytics", "Weekly trend", "No randomised experiment"], "09_analytics");
 // 8 audit + detail
 t = await visit("/audit", ["Decision audit trail", "Batch compliance audit"], "10_audit");
-const aud = await (await fetch(BASE + "/api/audit")).json();
+const aud = await (await fetch(API + "/api/audit")).json();
 check("audit records created by app", aud.total >= 3, `total=${aud.total}`);
 await visit(`/audit/${aud.rows[0].audit_id}`, ["Input / context", "Model output", "Treatment, safeguards and policy"], "11_audit_detail");
 // 9 404 + mobile

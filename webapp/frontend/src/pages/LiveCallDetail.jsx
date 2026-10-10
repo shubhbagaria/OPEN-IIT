@@ -87,8 +87,11 @@ export default function LiveCallDetail() {
   }, [callId, useLlm, llmOk, n]);
 
   // simulation loop: reveal next turn after its real recorded gap / speed, then score the prefix
+  // The next utterance is revealed only after the previous one has been scored, so the replay
+  // adapts to the server's speed (e.g. a free cloud instance) instead of queueing requests.
   useEffect(() => {
     if (status !== "running") return;
+    if (busy) return;
     if (pos >= n) { setStatus("done"); return; }
     const prev = tx[pos - 1];
     const cur = tx[pos];
@@ -101,7 +104,7 @@ export default function LiveCallDetail() {
     }, pos === 0 ? 300 : delay);
     return () => clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, pos, n, speed]);
+  }, [status, pos, n, speed, busy]);
 
   const lastTurn = Math.max(-1, ...Object.keys(assess).map(Number));
   const a = lastTurn >= 0 ? assess[lastTurn] : null;

@@ -131,9 +131,9 @@ class GeminiClassifier:
         if CALIB_FILE.exists():
             self.T = float(json.loads(CALIB_FILE.read_text())["temperature"])
 
-    def _config(self, **kw):
+    def _config(self, system=None, **kw):
         from google.genai import types
-        cfg = dict(system_instruction=self.system, temperature=0.0, **kw)
+        cfg = dict(system_instruction=system or self.system, temperature=0.0, **kw)
         try:
             cfg["thinking_config"] = types.ThinkingConfig(thinking_level="minimal")
             return types.GenerateContentConfig(**cfg)
@@ -166,7 +166,11 @@ class GeminiClassifier:
                 time.sleep(min(30, 2 ** i * (4 if "429" in msg or "RESOURCE_EXHAUSTED" in msg else 1)))
 
     def draft(self, text):
+        """Free-text next agent line (display only). Uses its own instructions: the classifier's
+        system prompt asks for JSON probabilities, which is not what a draft line should be."""
+        system = ("You are a debt-collection call copilot for Indian lenders. You read a live call "
+                  "(CTX line, then A: agent / B: voice bot / C: customer lines) and suggest the agent's next line.\n"
+                  + DRAFT_RULES + "\nReturn only the line itself: no labels, no JSON, no quotes.")
         t0 = time.perf_counter()
-        r = self.client.models.generate_content(model=self.model, contents=text + "\n\n" + DRAFT_RULES,
-                                                config=self._config())
+        r = self.client.models.generate_content(model=self.model, contents=text, config=self._config(system=system))
         return dict(text=(r.text or "").strip(), latency_ms=(time.perf_counter() - t0) * 1000)
